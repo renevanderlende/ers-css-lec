@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ERS Responsive Sizes in CSS using Linear Equations</title>
+<!-- link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.css" -->
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cutive&family=Cutive+Mono&family=Open+Sans:wght@300;400;600;700&display=swap"> 
+
+
+<style id="stl-globals-default">
+/**************************/
+/* preferred global rules */
+/**************************/
+html,body           { box-sizing: border-box; margin: 0 }
+body                { min-height: 100vh }
+
+*::before,*::after,
+ *                  { box-sizing: inherit }
+
+img                 { width: 100%; display: block; object-fit: cover }
+
+:focus              { outline: -webkit-focus-ring-color auto 0; outline-width: 0 } /* for Edge 2020 */
+::-moz-focus-inner  { padding: 0; border: 0 } /* Kill Firefox outline */
+</style>
+
+
+<style id="stl-gobals-typography-default">
+/***********************************/
+/* Default global typography rules */
+/***********************************/
+
+/* a few preferred personal rules */
+
+/* responsive root font size (320,14)(1280,20) */
+/* demo: full versus substituted equation: same result, different 'calc()'. CHECK THIS OUT!! */
+/*html        { font-size: calc((14 / 16 * 1rem) + (20 - 14) / (1280 - 320) * (100vmin - 320px)) }/**/
+html        { font-size: calc(0.625vmin + 0.75rem) }/**/
+
+body        { font-size: 1rem; line-height: 1.5;
+              font-family: Arial, Helvetica, sans-serif }
+
+h1          { font-size: 2rem } /* override FF+ H1 nesting behaviour */
+
+a           { color: inherit }
+</style>
+
+<style id="stl-flexbox-banding-default">
+/******************/
+/* simple banding */
+/******************/
+[simple-band] { 
+    display: flex; flex-flow: row wrap;
+    justify-content: center; align-content: center;
+}
+/***************************************/
+/* responsive FLEXBOX bands and blocks */
+/***************************************/
+/*
+    For use as easy 'landingpage' content containers
+    [band]  - horizontal content like a strip
+    [block] - vertical content like a list
+
+    - Can both be used interchangeably and nested
+      (band of blocks, block of bands, band of blocks holding bands…)
+    - Invert orientation with 'rows'/'cols' parameter ( *= means: contains )
+
+    Note: only works from IE11 and up (huh? up?)
+*/
+[band]                  { position: relative; width: 100% }
+
+[band],[block]          { display: flex; justify-content: center; align-content: center }
+
+[band],[band*="cols"]   { flex-flow: row wrap    }  /* a row of columns, default */
+       [band*="rows"]   { flex-flow: column wrap }  /* a column of rows */
+
+[block],[block*="rows"] { flex-flow: column wrap }  /* inverse default of [band] */
+        [block*="cols"] { flex-flow: row wrap    }
+</style>
+
+<style id="stl-flexbox-simple-default">
+/******************/
+/* FLEXBOX LAYOUT */
+/******************/
+
+/* [MANDATORY] => last in line FBL rules so they can override above setttings */
+
+/* simple flexbox shortcuts */
+[F]         { display: flex }
+[R]         { flex-direction: row }
+[C]         { flex-direction: column }
+[W]         { flex-wrap: wrap }
+
+div,item    { display: flex }
+div         { flex-flow: row wrap    }  /* a row of columns */
+item        { flex-flow: column wrap }  /* a column of rows */
+</style>
+
+<style id="stl-globals-spacing-alignment-default">
+/*******************************/
+/* global spacing and aligment */
+/*******************************/
+p {
+    margin: 0; /* no outer space */
+    padding:  calc((1.25vmin + 12px) / 2) 0 0 0; /* (320,16)(1920,36), inner space */
+}
+
+/*
+    responsive page padding
+    and responsive band padding (same as responsive page padding, but at band level)
+    p1(320,32) p2(1920, 72) => 0.25x + 24
+    p3(320, 8) p4(1920,320) => 0.195x - 54.4 
+
+    'Band padding' is only active when 'page padding' is off 
+*/
+[padded="1"],[simple-band],
+[padded="0"] [band*="padded"] { padding: calc( 2.5vh + 24px)    calc(19.5vw - 54.4px) }
+[padded="0"] [band*="padxh"]  { padding: calc((2.5vh + 24px)/2) calc(19.5vw - 54.4px) }
+[padded="0"] [band*="padx2"]  { padding: calc((2.5vh + 24px)*2) calc(19.5vw - 54.4px) }
+
+[padded="1"] [band*="padded"] { padding: 0 } /* already padded, no use to pad some more */
+
+
+[push*="R"] { margin-left  : auto } /* push elements Right/Left/Top/Bottom */
+[push*="L"] { margin-right : auto }
+[push*="T"] { margin-top   : auto }
+[push*="B"] { margin-bottom: auto }
+
+[align*="C"] { text-align: center  } /* text alignment */
+[align*="J"] { text-align: justify }
+[align*="L"] { text-align: left    }
+[align*="R"] { text-align: right   }
+[align*="V"] { align-items: center }
+
+[outside],
+[outside="H"] { margin: auto calc(50% - 50vw) }
+[outside="V"] { margin: calc(50% - 50vh) auto }
+</style>
+
+
+<style>
+:root {
+    /* making sure base fontsize is 100% of users' browser settings */
+    font-size: 100% !important; /* unless overridden by some injected code */
+
+    /* document font defaults */
+    --lh: 1.5;                      /* line-height */
+    --fw: 400;                      /* font-weight */
+    --f : 'Open Sans', sans-serif;  /* font-family, no use adding others => the browser knows which */
+
+    /*
+        Using a linear equation to calculate a responsive font
+
+        Variables for [useLEC]
+                      [useLEC="default"]
+                      [useLEC="y-intercept"]
+
+        equation: y = mx + b
+
+        --y = rise, result we need
+
+        --m = slope or (delta Y / delta X) or (rise / run) => (y2 - y1) / (x2 - x1)
+        --x = run (always current vp size = 100 vmin,vw,vh or vmax)
+        --b = Y-intercept, where the line crosses the Y-axis => y1 - m * x1
+
+        Extra:
+        --unit   = multiply result with 1px or 1rem or your own
+        --factor = multiplication factor to convert current size from PX unit to REM or vice versa
+                   1 for PX and 1/16 (= 0.0625) for REM, or your own
+
+        --scale  = scale factor, for easy scaling without assigning new equation values
+        --ratio  = height or width ratio, e.g. 16:9 = 1.77778, 9:16 = 0.5625, 17:10 = 1.7, etc.
+    */
+
+    /* 
+        initialization and some default values to get: y = 0.625x + 12
+         => y = mx + b for points (320,14)(1280,20)
+    */
+    --y : 0;                /* define */
+
+    --m : 0.00625;          /* 1/160 */
+    --x : var(--vx, var(--vw, var(--vh, var(--vm, 100vmin)))); /* either/or */
+    --b : 12;               /* size at x = 0 */
+
+    --x1:  320; --y1: 20;   /* point p1 => 14px at  320px */
+    --x2: 1280; --y2: 26;   /* point p2 => 20px at 1280px */
+
+    --scale : 1;            /* to multiply y with scale      */
+    --ratio : 1;            /* to multiply y with some ratio */
+ 
+    --unit  : 1rem;         /* preferred default unit to use in the equation     */
+    --factor: 0.0625;       /* 1/16 as by default REM is used in the equation    */
+                            /* change to '1px' and '1' if you want to use pixels */
+}
+
+[useLEC],
+[useLEC="y-intercept"],[useLEC="default"] {
+    /* Linear Equation y-intercept form: y = mx + b */
+    /* Extra: y = (mx + b) * scale * ratio */
+    --y: calc(var(--m) * var(--x) + (var(--b)) * var(--unit) * var(--factor) * var(--scale) * var(--ratio)); 
+}
+
+[useLEC="p-slope"],[useLEC="font"] {
+    /* Linear Equation, point-slope form: y = y1 + m(x - x1) substituted: y = y1 + (y2 - y1) / (x2 - x1) * (x - x1) */
+    /* Extra: y = (y1 + (y2 - y1) / (x2 - x1) * (x - x1)) * scale * ratio */
+    --y: calc((var(--y1) * var(--unit) * var(--factor) + (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) * (var(--x) - var(--x1) * 1px)) * var(--scale) * var(--ratio));
+}
+
+/* Primary scale */
+[data-font],
+[data-font*="x1"]   { --scale: 1 } 
+
+/* Alternative scales */
+[data-font*="x0.5"] { --scale: 0.5 } 
+[data-font*="x2"]   { --scale: 2 }
+[data-font*="x3"]   { --scale: 3 }
+
+/* Generic FONT rule */
+[data-font]             {
+    font-size  : var(--y);
+    font-family: var(--f);
+    line-height: var(--lh);
+    font-weight: var(--fw)
+}
+
+/* specific FONT rules */
+[data-font*="code"]     { --y1:  8; --y2: 17; font-family: 'Cutive Mono', monospace; --lh: normal }
+[data-font*="hero"]     { --y1: 12; --y2: 66; font-family: Cutive, serif }
+[data-font*="subline"]  { --y1: 12; --y2: 18; font-family: Cutive, serif }
+
+/* Exception to the HERO font rule: at viewport size below 320px force fontsize to 12px */
+@media (max-width: var(--x1)),(max-height: var(--x1)) { [data-font*="hero"] { font-size: 12px } }
+
+</style>
+
+</head>
+
+
+<body useLEC data-font padded="0">
+<div class="fork tr45deg"><a target="_blank" href="https://github.com/renevanderlende/ers-css-lec" data-ribbon="Code at Github"></a></div>
+
+<section band="padded.padx2.hero" C clr="3" plain="0">
+    <div useLEC="font" data-font="hero"   >Linear Equations in CSS</div>
+    <p   useLEC="font" data-font="subline">creating responsive sizes, part of 'easy responsiveness series' &trade;</p>
+</section>
+
+<section band="padded" C>
+    <p useLEC data-font="x0.5">testing scale 0.5<br>&nbsp;8px at vmin = &nbsp;320px<br>14px at vmin = 1280px</p>
+    <p useLEC data-font="x1"  >testing scale 1<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
+    <p useLEC data-font="x2"  >testing scale 2<br>26px at vmin = &nbsp;320px<br>32px at vmin = 1280px</p>
+    <p useLEC data-font="x3"  >testing scale 3<br>38px at vmin = &nbsp;320px<br>44px at vmin = 1280px</p>
+
+    <p useLEC="p-slope" data-font>testing point-slope form</p>
+</section>
+<section band="padded" C>
+    <div useLEC="font" data-font="hero"   >HERO</div>
+    <div useLEC="font" data-font="subline">testing HERO and subline</div>
+    <p>
+        testing 'default' font-size<br>
+        Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
+        Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
+    </p>
+    <p useLEC="font" data-font="code">
+        testing 'code' font-size<br>
+        Cu vel debet nobis, repudiare deseruisse reprehendunt usu ad. Ex elit idque nam.
+        Omnis munere detraxit mei te, eu labore appareat verterem est. Mel ex oporteat consectetuer.
+    </p>
+</section>
+</body>
+</html>
+
+
