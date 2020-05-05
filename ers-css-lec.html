@@ -7,6 +7,221 @@
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cutive&family=Cutive+Mono&family=Open+Sans:wght@300;400;600;700&display=swap"> 
 
+<style id="stl-globals-linear-equations-default">
+/*****************/
+/* VERY VERY WIP */
+/*****************/
+:root {
+    /* making sure base fontsize is 100% of users' browser settings */
+    font-size: 100% !important; /* unless overridden by some injected code */
+
+    /* document font defaults */
+    --lh: 1.5;                      /* line-height */
+    --fw: 400;                      /* font-weight */
+    --f : 'Open Sans', sans-serif;  /* font-family, no use adding others => the browser knows which */
+
+    /*
+        Using a linear equation to calculate a responsive font
+
+        Variables for [useLEC]
+                      [useLEC="default"]
+                      [useLEC="y-intercept"]
+
+        equation: y = mx + b
+
+        --y = rise, result we need
+
+        --m = slope or (delta Y / delta X) or (rise / run) => (y2 - y1) / (x2 - x1)
+        --x = run (always current vp size = 100 vmin,vw,vh or vmax)
+        --b = Y-intercept, where the line crosses the Y-axis => y1 - m * x1
+
+        Extra:
+        --unit   = multiply result with 1px or 1rem or your own
+        --factor = multiplication factor to convert current size from PX unit to REM or vice versa
+                   1 for PX and 1/16 (= 0.0625) for REM, or your own
+
+        --scale  = scale factor, for easy scaling without assigning new equation values
+        --ratio  = height or width ratio, e.g. 16:9 = 1.77778, 9:16 = 0.5625, 17:10 = 1.7, etc.
+    */
+
+    /* 
+        initialization and some default values to get: y = 0.625x + 12
+         => y = mx + b for points (320,14)(1280,20)
+    */
+    --y : 0;                /* define */
+
+    --m : 0.00625;          /* 1/160 */
+    --x : var(--vx, var(--vw, var(--vh, var(--vm, 100vmin)))); /* either/or */
+    --b : 12;               /* size at x = 0 */
+
+    --x1:  320; --y1: 14;   /* point p1 => 14px at  320px */
+    --x2: 1280; --y2: 20;   /* point p2 => 20px at 1280px */
+
+    --scale : 1;            /* to multiply y with scale      */
+    --ratio : 1;            /* to multiply y with some ratio */
+
+    --unit  : 1rem;         /* preferred default unit to use in the equation     */
+    --factor: 0.0625;       /* 1/16 as by default REM is used in the equation    */
+                            /* change to '1px' and '1' if you want to use pixels */
+    --sign1: 1;             /* set to -1 to negate additional LEC, default 1     */
+    --sign2: 1;             /* set to -1 to negate final result, default 1       */
+}
+
+[useLEC], [useLEC*="y-intercept"] {
+    /* Linear Equation y-intercept form: y = mx + b */
+    /* Extra: y = (mx + b) * scale * ratio */
+    --y: calc(var(--m) * var(--x) + (var(--b)) * var(--unit) * var(--factor) * var(--scale) * var(--ratio) * var(--sign2)); 
+}
+
+[useLEC*="p-slope"],[useLEC*="font"] {
+    /* Linear Equation, point-slope form: y = y1 + m(x - x1) substituted: y = y1 + (y2 - y1) / (x2 - x1) * (x - x1) */
+    /* Extra: y = (y1 + (y2 - y1) / (x2 - x1) * (x - x1)) * scale * ratio */
+    --y: calc((var(--y1) * var(--unit) * var(--factor) + (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) * (var(--x) - var(--x1) * 1px)) * var(--scale) * var(--ratio) * var(--sign2));
+}
+
+/* Primary scale */
+[data-font],
+[data-font*="x1"]   { --scale: 1 } 
+
+/* Alternative scales */
+[data-font*="x2"]   { --scale: 2 }
+[data-font*="x3"]   { --scale: 3 }
+
+/* Generic FONT rule */
+body, [data-font] {
+    font-size  : var(--y);
+    font-family: var(--f);
+    line-height: var(--lh);
+    font-weight: var(--fw)
+}
+/* OLD */
+/* responsive body font size (320,14)(1280,20) */
+/*body { font-size: calc((14 / 16 * 1rem) + (20 - 14) / (1280 - 320) * (100vmin - 320px)) }/**/
+/*body { font-size: calc(0.625vmin + 0.75rem) }/**/
+
+/* specific FONT rules */
+[data-font*="code"]     { --y1:  8; --y2: 17; font-family: 'Cutive Mono', monospace; --lh: normal }
+[data-font*="hero"]     { --y1: 12; --y2: 66; font-family: Cutive, serif }
+[data-font*="subline"]  { --y1: 12; --y2: 18; font-family: Cutive, serif }
+
+/* Exception to the HERO font rule: at viewport size below 320px force fontsize to 12px */
+@media (max-width: var(--x1)),(max-height: var(--x1)) { [data-font*="hero"] { font-size: 12px } }
+
+</style>
+
+<style id="stl-widget-ribbon-default">
+/*****************************/
+/* fork ribbon generic rules */
+/*****************************/
+.fork {
+    box-sizing: border-box; /* [OPTIONAL], but smart when using borders */
+    position: fixed; /* using 'absolute' will result in overflow and scrollbar */
+
+    /* Flexbox layout [OPTIONAL], personal preference */
+    display: flex; justify-content: center; align-items: center;
+
+    z-index: 999999; /* on top of everything */
+    /* maximum value is usually 2^(32 - 1): 32bits number -1 for negative sign */
+
+    /* Some default colors */
+    background-color: Black; color: White;
+
+    box-shadow: 0px 3px 5px -1px rgba(0,0,0,.4);
+    opacity: 0.8; /* Little 'shine through' for :hover */
+}
+.fork:hover { opacity: 1 }
+
+.fork a {
+    box-sizing: border-box; /* [DITTO] */
+    width: 100%; padding: 0.25em 0;
+    line-height: 1; white-space: nowrap; text-align: center;
+
+    font-weight: bold; color: inherit; text-decoration: none; 
+
+    border-style: dotted;
+    border-color: inherit transparent;
+}
+/* [OPTIONAL] How to use a custom property for text */
+.fork a:before { content: attr(data-ribbon) }
+
+.fork.tr45deg { /* [MANDATORY] for this version to work properly */
+    transform-origin: top left; /* pivot around T/L corner of the rectangle */
+    transform: rotate(45deg);   /* at a 45 degree angle. (Do not change as below cos() will fail) */
+}
+</style>
+<style id="stl-widget-ribbon-custom-variables">
+/*************************************/
+/* fork ribbon with custom variables */
+/*************************************/
+:root {
+    /* for all others, variable scales */
+    --fork-scale     : 1.1; /* set these to your desired scales */
+    --fork-scale-text: 1;
+    --fork-bd        : 2px;                 /* border width */
+
+    --fork-wm: 5    ; --fork-wb: 10.25rem;  /* m and b variables to calculate y, ribbon width */
+    --fork-hm: 0.5  ; --fork-hb: 1.4rem;    /* ditto for height and font-size */
+    --fork-fm: 0.625; --fork-fb: 0.5rem;
+
+    /* do not modify */
+    --fork-x: 1vmin;                        /* x is always 1vmin */
+    --sqrt-2: 1.4142;                       /* Math.sqrt(2) ~ 1.4142135... */
+    --cos2   : 0.1464466;                   /* cos(67.5) => 67.5 = (180deg - 45deg) / 2 => cos^2 = 0.1464466 */
+                                            /* Used to move rotated ribbon up and right */
+
+    /* after 45deg rotation (pivot around top/left corner) 'fork' height becomes diagonal of a square */
+    /* To get the side (height and/or width) of a square from its diagonal (= hypotenuse of a traingle)
+       => hypotenuse / sqrt(2) */
+
+    /* to move 'fork' up: ribbon height (which is now hypotenuse) / 1.4142 */
+    /* where height = 0.5vmin + 1.4rem * scale */
+
+    /* distance to go right = (hypotenuse / 1.4142) + (2 * width * cos^2) * scale * -1 */
+    /* discussed and verified on 'MathIsFun Forum': http://www.mathisfunforum.com/viewtopic.php?id=25620 */
+    /* This works like a charm, so cool! (Thanks a bunch, Bob) */
+}
+.fork a { border-width: var(--fork-bd) 0; padding: calc(var(--fork-scale)/4 * 1rem) 0 }
+
+.fork { /* default ribbon */
+    width    : calc((var(--fork-wm) * var(--fork-x) + var(--fork-wb)) * var(--fork-scale)); /* (320,180)(1920,260) */
+    height   : calc((var(--fork-hm) * var(--fork-x) + var(--fork-hb)) * var(--fork-scale)); /* (320, 24)(1920, 32) */
+    font-size: calc((var(--fork-fm) * var(--fork-x) + var(--fork-fb)) * var(--fork-scale-text)); /* (320, 10)(1280, 16) */
+}
+.fork.tr45deg {
+    /*       cos = cos(67.5) */
+    /*         r = (wm * x + wb)                    /* width  of rectangle */
+    /* distance2 = (hm * x + hb) / sqrt2            /* height of rectangle */
+    /* distance3 = 2 * r * cos(67.5) * cos(67.5) */
+    /* top   = (hm * x + hb) / sqrt2 * scale * -1   /* move above top border */
+    /* right = (((hm * x + hb) / sqrt2) + (2 * (wm * x + wb) * cos * cos)) * scale * -1 /* move beyond right border */
+
+    top  : calc(  (var(--fork-hm) * var(--fork-x) + var(--fork-hb)) / var(--sqrt-2) * var(--fork-scale) * -1);
+    right: calc((((var(--fork-hm) * var(--fork-x) + var(--fork-hb)) / var(--sqrt-2)) + (2 * (var(--fork-wm) * var(--fork-x) + var(--fork-wb)) * var(--cos2))) * var(--fork-scale) * -1);
+}
+
+[ribbon*="1"] { /* ribbon 4 */
+    --fork-wb: 2.25rem; /* calc(5vmin + 2.25rem) (320,52)(1920,132) */
+    background-color: Yellow; color: black;
+}
+[ribbon*="2"] { /* ribbon 0 */
+    --fork-wb: 6.25rem; /* calc(5vmin + 6.25rem) (320,116)(1920,196) */
+    background-color: Tomato; color: black;
+}
+[ribbon*="3"] { /* ribbon 1 */
+    --fork-wb: 10.25rem; /* calc(5vmin + 10.25rem) (320,180)(1920,260) */
+    background-color: Black;
+}
+[ribbon*="4"] { /* ribbon 2 */
+    --fork-wb: 14.25rem; /* calc(5vmin + 14.25rem) (320,244)(1920,324) */
+    background-color: DarkSlateGrey;
+}
+[ribbon*="5"] { /* ribbon 3 */
+    --fork-wb: 18.25rem; /* calc(5vmin + 18.25rem) (320,308)(1920,388) */
+    background-color: MidnightBlue;
+}
+</style>
+
+
 
 <style id="stl-globals-default">
 /**************************/
@@ -29,20 +244,9 @@ img                 { width: 100%; display: block; object-fit: cover }
 /***********************************/
 /* Default global typography rules */
 /***********************************/
+h1  { font-size: 2rem } /* override FF+ H1 nesting behaviour */
 
-/* a few preferred personal rules */
-
-/* responsive root font size (320,14)(1280,20) */
-/* demo: full versus substituted equation: same result, different 'calc()'. CHECK THIS OUT!! */
-/*html        { font-size: calc((14 / 16 * 1rem) + (20 - 14) / (1280 - 320) * (100vmin - 320px)) }/**/
-html        { font-size: calc(0.625vmin + 0.75rem) }/**/
-
-body        { font-size: 1rem; line-height: 1.5;
-              font-family: Arial, Helvetica, sans-serif }
-
-h1          { font-size: 2rem } /* override FF+ H1 nesting behaviour */
-
-a           { color: inherit }
+a   { color: inherit }
 </style>
 
 <style id="stl-flexbox-banding-default">
@@ -102,7 +306,7 @@ item        { flex-flow: column wrap }  /* a column of rows */
 /*******************************/
 p {
     margin: 0; /* no outer space */
-    padding:  calc((1.25vmin + 12px) / 2) 0 0 0; /* (320,16)(1920,36), inner space */
+    padding:  calc((1.25vmin + 0.75rem) / 2) 0 0 0; /* (320,16)(1920,36), inner space */
 }
 
 /*
@@ -114,9 +318,9 @@ p {
     'Band padding' is only active when 'page padding' is off 
 */
 [padded="1"],[simple-band],
-[padded="0"] [band*="padded"] { padding: calc( 2.5vh + 24px)    calc(19.5vw - 54.4px) }
-[padded="0"] [band*="padxh"]  { padding: calc((2.5vh + 24px)/2) calc(19.5vw - 54.4px) }
-[padded="0"] [band*="padx2"]  { padding: calc((2.5vh + 24px)*2) calc(19.5vw - 54.4px) }
+[padded="0"] [band*="padded"] { padding: calc( 2.5vh + 1.5rem)    calc(19.5vw - 3.4rem) }
+[padded="0"] [band*="padxh"]  { padding: calc((2.5vh + 1.5rem)/2) calc(19.5vw - 3.4rem) }
+[padded="0"] [band*="padx2"]  { padding: calc((2.5vh + 1.5rem)*2) calc(19.5vw - 3.4rem) }
 
 [padded="1"] [band*="padded"] { padding: 0 } /* already padded, no use to pad some more */
 
@@ -137,107 +341,66 @@ p {
 [outside="V"] { margin: calc(50% - 50vh) auto }
 </style>
 
+<style id="stl-globals-utility-default">
+/**************************************************/
+/* Utility rules, first so they can be overridden */
+/**************************************************/
+body  { cursor: default } /* Plain arrow for everything, but… */
+input { cursor: auto    } /* …use HTML default cursor on inputs, unless it is an: */
 
-<style>
-:root {
-    /* making sure base fontsize is 100% of users' browser settings */
-    font-size: 100% !important; /* unless overridden by some injected code */
+input[list="datalist"],
+input[type="button"  ],
+input[type="checkbox"],
+input[type="radio"   ],
+input[type="color"   ],
+input[type="range"   ],
+input[type="reset"   ],
+input[type="file"    ],
+input[type="submit"  ],
+label:not([for=""]),
+a,button,select,keygen   { cursor: pointer } 
+[contenteditable="true"] { cursor: text    }
 
-    /* document font defaults */
-    --lh: 1.5;                      /* line-height */
-    --fw: 400;                      /* font-weight */
-    --f : 'Open Sans', sans-serif;  /* font-family, no use adding others => the browser knows which */
+/* Darker/more contrast text (put in <body>)
+   => GPU intensive, set default to "0" if document scroll feels too sluggish. */
+[cleartype="1"] { text-shadow: .1px  .1px .2px hsla(0,0%,15%,.35),
+                              -.1px -.1px .2px hsla(0,0%,15%,.25) }
+h1,h2,h3,h4,h5,h6,b,strong,
+[cleartype="0"] { text-shadow: none } /* exceptions, no need to go even 'bolder' */
 
-    /*
-        Using a linear equation to calculate a responsive font
-
-        Variables for [useLEC]
-                      [useLEC="default"]
-                      [useLEC="y-intercept"]
-
-        equation: y = mx + b
-
-        --y = rise, result we need
-
-        --m = slope or (delta Y / delta X) or (rise / run) => (y2 - y1) / (x2 - x1)
-        --x = run (always current vp size = 100 vmin,vw,vh or vmax)
-        --b = Y-intercept, where the line crosses the Y-axis => y1 - m * x1
-
-        Extra:
-        --unit   = multiply result with 1px or 1rem or your own
-        --factor = multiplication factor to convert current size from PX unit to REM or vice versa
-                   1 for PX and 1/16 (= 0.0625) for REM, or your own
-
-        --scale  = scale factor, for easy scaling without assigning new equation values
-        --ratio  = height or width ratio, e.g. 16:9 = 1.77778, 9:16 = 0.5625, 17:10 = 1.7, etc.
-    */
-
-    /* 
-        initialization and some default values to get: y = 0.625x + 12
-         => y = mx + b for points (320,14)(1280,20)
-    */
-    --y : 0;                /* define */
-
-    --m : 0.00625;          /* 1/160 */
-    --x : var(--vx, var(--vw, var(--vh, var(--vm, 100vmin)))); /* either/or */
-    --b : 12;               /* size at x = 0 */
-
-    --x1:  320; --y1: 20;   /* point p1 => 14px at  320px */
-    --x2: 1280; --y2: 26;   /* point p2 => 20px at 1280px */
-
-    --scale : 1;            /* to multiply y with scale      */
-    --ratio : 1;            /* to multiply y with some ratio */
- 
-    --unit  : 1rem;         /* preferred default unit to use in the equation     */
-    --factor: 0.0625;       /* 1/16 as by default REM is used in the equation    */
-                            /* change to '1px' and '1' if you want to use pixels */
+hr { 
+    display: block; width: 100%;
+    margin-top   : 0;
+    margin-bottom: 0.75em;
+    margin-left  : auto;
+    margin-right : auto;
 }
 
-[useLEC],
-[useLEC="y-intercept"],[useLEC="default"] {
-    /* Linear Equation y-intercept form: y = mx + b */
-    /* Extra: y = (mx + b) * scale * ratio */
-    --y: calc(var(--m) * var(--x) + (var(--b)) * var(--unit) * var(--factor) * var(--scale) * var(--ratio)); 
+/* prohibit user from selecting text (put in <body>) */
+[no-select] { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none }
+[do-select] { -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text; cursor: auto }
+/* enable user to select text (put in specific elements) */
+
+[hide], [data-hide="1"], [plain="1"] {
+    display: none; position: absolute; overflow: hidden; clip: rect(0 0 0 0);
+    z-index: -999999; top: -999999px; margin: -1px; padding: 0; border: 0;
+    height: 1px; width: 1px; min-height: 0; min-width: 0; max-height: 0; max-width: 0
 }
 
-[useLEC="p-slope"],[useLEC="font"] {
-    /* Linear Equation, point-slope form: y = y1 + m(x - x1) substituted: y = y1 + (y2 - y1) / (x2 - x1) * (x - x1) */
-    /* Extra: y = (y1 + (y2 - y1) / (x2 - x1) * (x - x1)) * scale * ratio */
-    --y: calc((var(--y1) * var(--unit) * var(--factor) + (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) * (var(--x) - var(--x1) * 1px)) * var(--scale) * var(--ratio));
-}
-
-/* Primary scale */
-[data-font],
-[data-font*="x1"]   { --scale: 1 } 
-
-/* Alternative scales */
-[data-font*="x0.5"] { --scale: 0.5 } 
-[data-font*="x2"]   { --scale: 2 }
-[data-font*="x3"]   { --scale: 3 }
-
-/* Generic FONT rule */
-[data-font]             {
-    font-size  : var(--y);
-    font-family: var(--f);
-    line-height: var(--lh);
-    font-weight: var(--fw)
-}
-
-/* specific FONT rules */
-[data-font*="code"]     { --y1:  8; --y2: 17; font-family: 'Cutive Mono', monospace; --lh: normal }
-[data-font*="hero"]     { --y1: 12; --y2: 66; font-family: Cutive, serif }
-[data-font*="subline"]  { --y1: 12; --y2: 18; font-family: Cutive, serif }
-
-/* Exception to the HERO font rule: at viewport size below 320px force fontsize to 12px */
-@media (max-width: var(--x1)),(max-height: var(--x1)) { [data-font*="hero"] { font-size: 12px } }
-
+/* show all elements with outlines (put in <body>) */
+[outlines="1"] ::-moz-focus-inner { padding: 0; border: 0 } /* Kills FF extra outline */
+[outlines="1"] *                  { outline: 1px dashed }
 </style>
 
 </head>
 
 
-<body useLEC data-font padded="0">
-<div class="fork tr45deg"><a target="_blank" href="https://github.com/renevanderlende/ers-css-lec" data-ribbon="Code at Github"></a></div>
+<body padded="0" outlines="0">
+<div class="fork tr45deg" ribbon="1"><a target="_blank" href="javascript:voi(0)" data-ribbon="1"></a></div>
+<div class="fork tr45deg" ribbon="2"><a target="_blank" href="javascript:voi(0)" data-ribbon="Ribbon 2"></a></div>
+<div class="fork tr45deg" ribbon="3"><a target="_blank" href="https://github.com/renevanderlende/ers-css-fork-ribbon" data-ribbon="Ribbon at Github"></a></div>
+<div class="fork tr45deg" ribbon="4"><a target="_blank" href="https://github.com/renevanderlende/renevanderlende.github.io/tree/master/js" data-ribbon="LinearToCalc Tool 1.1"></a></div>
+<div class="fork tr45deg" ribbon="5"><a target="_blank" href="https://github.com/renevanderlende/ers-css-lec" data-ribbon="LEC at Github"></a></div>
 
 <section band="padded.padx2.hero" C clr="3" plain="0">
     <div useLEC="font" data-font="hero"   >Linear Equations in CSS</div>
@@ -245,16 +408,22 @@ p {
 </section>
 
 <section band="padded" C>
-    <p useLEC data-font="x0.5">testing scale 0.5<br>&nbsp;8px at vmin = &nbsp;320px<br>14px at vmin = 1280px</p>
-    <p useLEC data-font="x1"  >testing scale 1<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
-    <p useLEC data-font="x2"  >testing scale 2<br>26px at vmin = &nbsp;320px<br>32px at vmin = 1280px</p>
-    <p useLEC data-font="x3"  >testing scale 3<br>38px at vmin = &nbsp;320px<br>44px at vmin = 1280px</p>
+    <p useLEC="y-intercept" data-font>testing y-intercept form</p>
+    <p useLEC="p-slope"     data-font>testing point-slope form</p>
 
-    <p useLEC="p-slope" data-font>testing point-slope form</p>
+    <p useLEC data-font="x1">testing scale x1<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
+    <p useLEC data-font="x2">testing scale x2<br>26px at vmin = &nbsp;320px<br>32px at vmin = 1280px</p>
+    <p useLEC data-font="x3">testing scale x3<br>38px at vmin = &nbsp;320px<br>44px at vmin = 1280px</p>
 </section>
+
 <section band="padded" C>
-    <div useLEC="font" data-font="hero"   >HERO</div>
-    <div useLEC="font" data-font="subline">testing HERO and subline</div>
+    <p useLEC="font" data-font="hero"   >HERO</p>
+    <p useLEC="font" data-font="subline">testing HERO and subline</p>
+    <p>
+        testing 'default' font-size<br>
+        Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
+        Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
+    </p>
     <p>
         testing 'default' font-size<br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
@@ -262,6 +431,11 @@ p {
     </p>
     <p useLEC="font" data-font="code">
         testing 'code' font-size<br>
+        Cu vel debet nobis, repudiare deseruisse reprehendunt usu ad. Ex elit idque nam.
+        Omnis munere detraxit mei te, eu labore appareat verterem est. Mel ex oporteat consectetuer.
+    </p>
+    <p useLEC="font" data-font="code.x2">
+        testing 'code' font-size at scale x2<br>
         Cu vel debet nobis, repudiare deseruisse reprehendunt usu ad. Ex elit idque nam.
         Omnis munere detraxit mei te, eu labore appareat verterem est. Mel ex oporteat consectetuer.
     </p>
