@@ -3,111 +3,227 @@
 <head>
 <meta charset="UTF-8">
 <title>ERS Responsive Sizes in CSS using Linear Equations</title>
-<!-- link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.css" -->
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cutive&family=Cutive+Mono&family=Open+Sans:wght@300;400;600;700&display=swap"> 
 
 <style id="stl-globals-linear-equations-default">
-/*****************/
-/* VERY VERY WIP */
-/*****************/
+/******************/
+/* VERY, VERY WIP */
+/******************/
+/*
+    Using 'Linear Equations' to calculate responsive sizes of CSS size properties like
+    font-size, width, height, margin, padding, column-width, etc.
+    Basically any size property that accepts the use of the CSS 'calc()' function.
+
+    Use either equation:
+
+    'form1' - point-slope form: y - y1 = m(x - x1), simplified y = y1 + m(x - x1)
+              fully substituted: y = y1 + (y2 - y1) / (x2 - x1) * (x - x1)
+              Most commonly used, long and only requires points (x1,y1)(x2,y2), CPU intensive.
+
+    'form2' - y-intercept or slope form: y = mx + b
+              Short, but requires manual calculation of m and b, less CPU intensive.
+              (Check linearToCalc 1.1, a tool that converts a linear equation to CSS 'calc()' 
+              https://github.com/renevanderlende/renevanderlende.github.io/tree/master/js)
+
+    Where:
+    --y = RISE, result we need
+
+    --m = SLOPE or (delta Y / delta X) or (rise / run) => (y2 - y1) / (x2 - x1)
+
+    --x = RUN (always current vp size defined as 100vmin,vw,vh or vmax)
+
+    --b = Y-INTERCEPT, where the line crosses the Y-axis or (value of y at x = 0) => y1 - m * x1
+          (full: y1 - (y2 - y1) / (x2 - x1) * x1)
+
+    To calculate y = mx + b manually:
+    y = (y2 - y1) / (x2 - x1) * x + (y1 - (y2 - y1) / (x2 - x1) * x1))
+
+    Use two points: p1(x1,y1) p2(x2,y2)
+    --x1,--y1 - minimum viewport size and required size at that min vp
+    --x2,--y2 - maximum viewport size and required size at that max vp
+
+    Extra:
+    --unit   = convert result to PX or REM
+    --factor = multiplication factor to convert current size to specified unit
+               defaults: 1 for PX and 1/16 (= 0.0625) for REM
+
+    --scale  = scale factor, for easy scaling using the same points
+    --ratio  = height or width ratio, e.g. 16:9 = 1.77778, 9:16 = 0.5625, 17:10 = 1.7, etc.
+    --sign   = to get a positive or negative end result (think margin, padding, top, left, etc.)
+*/
+
 :root {
-    /* making sure base fontsize is 100% of users' browser settings */
+    /* making sure base fontsize is 100% of users' browser font settings */
     font-size: 100% !important; /* unless overridden by some injected code */
 
     /* document font defaults */
-    --lh: 1.5;                      /* line-height */
+    --lh: 1.5; --body-lh: 1.33333;  /* line-height */
     --fw: 400;                      /* font-weight */
-    --f : 'Open Sans', sans-serif;  /* font-family, no use adding others => the browser knows which */
-
-    /*
-        Using a linear equation to calculate a responsive font
-
-        Variables for [useLEC]
-                      [useLEC="default"]
-                      [useLEC="y-intercept"]
-
-        equation: y = mx + b
-
-        --y = rise, result we need
-
-        --m = slope or (delta Y / delta X) or (rise / run) => (y2 - y1) / (x2 - x1)
-        --x = run (always current vp size = 100 vmin,vw,vh or vmax)
-        --b = Y-intercept, where the line crosses the Y-axis => y1 - m * x1
-
-        Extra:
-        --unit   = multiply result with 1px or 1rem or your own
-        --factor = multiplication factor to convert current size from PX unit to REM or vice versa
-                   1 for PX and 1/16 (= 0.0625) for REM, or your own
-
-        --scale  = scale factor, for easy scaling without assigning new equation values
-        --ratio  = height or width ratio, e.g. 16:9 = 1.77778, 9:16 = 0.5625, 17:10 = 1.7, etc.
-    */
+    --ff: 'Open Sans', sans-serif;  /* font-family */
 
     /* 
-        initialization and some default values to get: y = 0.625x + 12
-         => y = mx + b for points (320,14)(1280,20)
+        Initialization and some default values
+         => y = mx + b for points (320,14)(1280,20) => y = 0.00625x + 12
     */
-    --y : 0;                /* define */
 
-    --m : 0.00625;          /* 1/160 */
+    /* define ALL variables in :root to make them globally available */
+    --y : 0; /* equation result */
+
+    /*
+        Trying out Custom (Property) Cascades by Miriam Suzanne
+        https://codepen.io/mirisuzanne/pen/KKdWXGo
+    */
     --x : var(--vx, var(--vw, var(--vh, var(--vm, 100vmin)))); /* either/or */
+    /*
+        Unfortunately, for now, any assigned value to vx,vw,vh or vm somehow does not compute.
+        Furthermore, we might just as well assign 100vw (etc.) to --x when required.
+
+        To simply initialize, change to: --x: 100vmin;
+    */
+
+    --m : 0.00625;          /* 1/160th */
     --b : 12;               /* size at x = 0 */
 
-    --x1:  320; --y1: 14;   /* point p1 => 14px at  320px */
-    --x2: 1280; --y2: 20;   /* point p2 => 20px at 1280px */
-
-    --scale : 1;            /* to multiply y with scale      */
-    --ratio : 1;            /* to multiply y with some ratio */
+    --x1:  320; --y1: 14;   /* point p1 => 14px at  320px min vp */
+    --x2: 1280; --y2: 20;   /* point p2 => 20px at 1280px max vp */
 
     --unit  : 1rem;         /* preferred default unit to use in the equation     */
     --factor: 0.0625;       /* 1/16 as by default REM is used in the equation    */
                             /* change to '1px' and '1' if you want to use pixels */
-    --sign1: 1;             /* set to -1 to negate additional LEC, default 1     */
-    --sign2: 1;             /* set to -1 to negate final result, default 1       */
+
+    --scale: 1;             /* to multiply y with scale */
+    --ratio: 1;             /* to multiply y with some ratio (esp. useful with heights and widths) */
+    --sign : 1;             /* set to -1 to negate LEC result, default 1 = positive */
+                            /* useful when going beyond an elements' top,right,bottom,left: 0 */
 }
-
-[useLEC], [useLEC*="y-intercept"] {
-    /* Linear Equation y-intercept form: y = mx + b */
-    /* Extra: y = (mx + b) * scale * ratio */
-    --y: calc(var(--m) * var(--x) + (var(--b)) * var(--unit) * var(--factor) * var(--scale) * var(--ratio) * var(--sign2)); 
-}
-
-[useLEC*="p-slope"],[useLEC*="font"] {
-    /* Linear Equation, point-slope form: y = y1 + m(x - x1) substituted: y = y1 + (y2 - y1) / (x2 - x1) * (x - x1) */
-    /* Extra: y = (y1 + (y2 - y1) / (x2 - x1) * (x - x1)) * scale * ratio */
-    --y: calc((var(--y1) * var(--unit) * var(--factor) + (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) * (var(--x) - var(--x1) * 1px)) * var(--scale) * var(--ratio) * var(--sign2));
-}
-
-/* Primary scale */
-[data-font],
-[data-font*="x1"]   { --scale: 1 } 
-
-/* Alternative scales */
-[data-font*="x2"]   { --scale: 2 }
-[data-font*="x3"]   { --scale: 3 }
-
 /* Generic FONT rule */
-body, [data-font] {
-    font-size  : var(--y);
-    font-family: var(--f);
-    line-height: var(--lh);
-    font-weight: var(--fw)
+[data-font] { font-family: var(--ff); line-height: var(--lh); font-weight: var(--fw) }
+
+
+[data-LEC],           /* default for all uses */
+[data-LEC^="form1"] { /* or generic 'form1'   */
+    /* Extra: multiply with scale and sign */
+    --y: calc( (
+                 var(--y1) * var(--unit) * var(--factor) + 
+                (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) *
+                (var(--x)  - var(--x1) * 1px)
+               ) * var(--scale) * var(--sign) );
+
+    /* TODO: verify correct use/position of unit and factor and 1px */
 }
-/* OLD */
-/* responsive body font size (320,14)(1280,20) */
-/*body { font-size: calc((14 / 16 * 1rem) + (20 - 14) / (1280 - 320) * (100vmin - 320px)) }/**/
-/*body { font-size: calc(0.625vmin + 0.75rem) }/**/
+[data-LEC^="form2"] { /* generic 'form2' */
+    /* Extra: ditto */
+    --y: calc( var(--m) * var(--x) + (var(--b)) * 
+               var(--unit) * var(--factor) * var(--scale) * var(--sign) ); 
+}
 
-/* specific FONT rules */
-[data-font*="code"]     { --y1:  8; --y2: 17; font-family: 'Cutive Mono', monospace; --lh: normal }
-[data-font*="hero"]     { --y1: 12; --y2: 66; font-family: Cutive, serif }
-[data-font*="subline"]  { --y1: 12; --y2: 18; font-family: Cutive, serif }
+/* LEC unit conversions */
+[data-LEC*=".rem"]      { --unit: 1rem; --factor: 0.0625 } /* 1/16, default */
+[data-LEC*=".px" ]      { --unit: 1px ; --factor: 1      }
+/* extend this list with your own */
 
-/* Exception to the HERO font rule: at viewport size below 320px force fontsize to 12px */
-@media (max-width: var(--x1)),(max-height: var(--x1)) { [data-font*="hero"] { font-size: 12px } }
+/* positive or negative final result */
+[data-LEC*=".pos"]      { --sign:  1 } /* default */
+[data-LEC*=".neg"]      { --sign: -1 }
+
+/*******************************************/
+/* Various predefined LEC parameter values */
+/* (check defaults in above :root)         */
+/*******************************************/
+
+/* A few common ratios (5 significant decimals are more than enough) */
+[data-LEC*=".1:1"  ]    { --ratio: 1       } /* default */
+[data-LEC*=".2:1"  ]    { --ratio: 2       }
+[data-LEC*=".1:2"  ]    { --ratio: 0.5     }
+[data-LEC*=".3:2"  ]    { --ratio: 1.5     }
+[data-LEC*=".2:3"  ]    { --ratio: 0.66667 }
+[data-LEC*=".4:3"  ]    { --ratio: 1.33333 }
+[data-LEC*=".3:4"  ]    { --ratio: 0.75    }
+[data-LEC*=".16:9" ]    { --ratio: 1.77778 }
+[data-LEC*=".9:16" ]    { --ratio: 0.5625  }
+[data-LEC*=".17:10"]    { --ratio: 1.7     }
+[data-LEC*=".10:17"]    { --ratio: 0.58824 }
+
+/* some default scales */
+[data-LEC*=".x0"]       { --scale: 0.5 }
+[data-LEC*=".x1"]       { --scale: 1   } /* default */
+[data-LEC*=".x2"]       { --scale: 2   }
+[data-LEC*=".x3"]       { --scale: 3   }
+
+/* Assigning value of y to various sizes */
+[data-LEC^="font"]      { font-size: var(--y) }
+
+/*
+    Unfortunately (as per May 2020) @media does not accept var() yet.
+    So, if you want to have min/max constraints on responsive sizes you will need
+    to add a @media for each --x1 and --x2 value you use to calculate a size.
+    This is one of the more important reasons I mostly use min=320 and max=1280 (or 1920) only.
+
+    The @media would otherwise have been something like this:
+    
+    @media (max-width: var(--x1)),(max-height: var(--x1)) { ... }
+    @media (max-width: var(--x2)),(max-height: var(--x2)) { ... }
+
+    For now, just use 320px and 1280px as min.max viewport size for fonts
+*/
+/*
+    Add Media Queries for each min/max viewport size you have used for x1 and x2 values you used in
+    your equations when you need to contstraint the results to the min/max y1 and y2 values.
+*/
+
+@media (max-width:  320px),(max-height:  320px) {
+    [data-LEC^="font"] { font-size: calc(var(--y1) * var(--unit) * var(--factor) * var(--scale)) }
+    /* 
+        Add selectors for sizes  at min vp like padding, margin, etc. using 'custom variables', of course!
+        BEWARE: element (min-/max-)width or height use a different approach.
+    */
+}
+@media (min-width: 1280px),(min-height: 1280px) { 
+    [data-LEC^="font"] { font-size: calc(var(--y2) * var(--unit) * var(--factor) * var(--scale)) }
+    /*
+        same strategy here for sizes at max vp ...
+    */
+}
+
+/*
+    As --y1 and --y2 are being used for [.min][.max] instead of --y we need
+    to put --unit, --factor and --scale into the equations below again. 
+
+    And to prevent repeting code like (4 times):
+
+        var(--y) * var(--unit) * var(--factor) * var(--scale)
+        var(--y) * var(--unit) * var(--factor) * var(--scale) * var(--ratio)
+
+    we create temporary variables (--mult1,--mult2) instead to create the
+    multiplication factor used in the linear equation. 
+
+    ...less confusion, less maintenance.
+*/
+/* Calculate height and width of the rectangle depending on its orientation (PT = Portrait or LS = Landscape) */
+[data-LEC^="rect"][data-LEC*=".PT"] { height: calc(var(--y) * var(--ratio)); width : var(--y) }
+[data-LEC^="rect"][data-LEC*=".LS"] { width : calc(var(--y) * var(--ratio)); height: var(--y) }
+
+[data-LEC^="rect"] {
+    --mult1: calc( var(--unit) * var(--factor) * var(--scale) ); 
+    --mult2: calc( var(--unit) * var(--factor) * var(--scale) * var(--ratio) ); 
+}
+/*
+    Instead of a series of Media Queries to constraint all kind of rectangles to their
+    minimum and maximum values, we use a [.min] and/or [.max] parameter in the 
+    [use-LEC] equation property instead. This way we can decide to use the min/max
+    constraint on a 'per rectangle' basis.
+*/
+/* Constraints for rectangle at minimum viewport size */
+[data-LEC^="rect"][data-LEC*=".PT"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--mult1)); min-height: calc(var(--y1) * var(--mult2)) }
+[data-LEC^="rect"][data-LEC*=".LS"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--mult2)); min-height: calc(var(--y1) * var(--mult1)) }
+/* Constraints for rectangle at maximum viewport size */
+[data-LEC^="rect"][data-LEC*=".PT"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--mult1)); max-height: calc(var(--y2) * var(--mult2)) }
+[data-LEC^="rect"][data-LEC*=".LS"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--mult2)); max-height: calc(var(--y2) * var(--mult1)) }
 
 </style>
+
+
 
 <style id="stl-widget-ribbon-default">
 /*****************************/
@@ -198,30 +314,7 @@ body, [data-font] {
     top  : calc(  (var(--fork-hm) * var(--fork-x) + var(--fork-hb)) / var(--sqrt-2) * var(--fork-scale) * -1);
     right: calc((((var(--fork-hm) * var(--fork-x) + var(--fork-hb)) / var(--sqrt-2)) + (2 * (var(--fork-wm) * var(--fork-x) + var(--fork-wb)) * var(--cos2))) * var(--fork-scale) * -1);
 }
-
-[ribbon*="1"] { /* ribbon 4 */
-    --fork-wb: 2.25rem; /* calc(5vmin + 2.25rem) (320,52)(1920,132) */
-    background-color: Yellow; color: black;
-}
-[ribbon*="2"] { /* ribbon 0 */
-    --fork-wb: 6.25rem; /* calc(5vmin + 6.25rem) (320,116)(1920,196) */
-    background-color: Tomato; color: black;
-}
-[ribbon*="3"] { /* ribbon 1 */
-    --fork-wb: 10.25rem; /* calc(5vmin + 10.25rem) (320,180)(1920,260) */
-    background-color: Black;
-}
-[ribbon*="4"] { /* ribbon 2 */
-    --fork-wb: 14.25rem; /* calc(5vmin + 14.25rem) (320,244)(1920,324) */
-    background-color: DarkSlateGrey;
-}
-[ribbon*="5"] { /* ribbon 3 */
-    --fork-wb: 18.25rem; /* calc(5vmin + 18.25rem) (320,308)(1920,388) */
-    background-color: MidnightBlue;
-}
 </style>
-
-
 
 <style id="stl-globals-default">
 /**************************/
@@ -233,27 +326,24 @@ body                { min-height: 100vh }
 *::before,*::after,
  *                  { box-sizing: inherit }
 
+
 img                 { width: 100%; display: block; object-fit: cover }
 
 :focus              { outline: -webkit-focus-ring-color auto 0; outline-width: 0 } /* for Edge 2020 */
 ::-moz-focus-inner  { padding: 0; border: 0 } /* Kill Firefox outline */
 </style>
-
-
 <style id="stl-gobals-typography-default">
 /***********************************/
 /* Default global typography rules */
 /***********************************/
 h1  { font-size: 2rem } /* override FF+ H1 nesting behaviour */
-
 a   { color: inherit }
 </style>
-
 <style id="stl-flexbox-banding-default">
 /******************/
 /* simple banding */
 /******************/
-[simple-band] { 
+[simple-band] {
     display: flex; flex-flow: row wrap;
     justify-content: center; align-content: center;
 }
@@ -281,13 +371,12 @@ a   { color: inherit }
 [block],[block*="rows"] { flex-flow: column wrap }  /* inverse default of [band] */
         [block*="cols"] { flex-flow: row wrap    }
 </style>
-
 <style id="stl-flexbox-simple-default">
 /******************/
 /* FLEXBOX LAYOUT */
 /******************/
 
-/* [MANDATORY] => last in line FBL rules so they can override above setttings */
+/* [MANDATORY] => last FBL rules in line so they can override above setttings */
 
 /* simple flexbox shortcuts */
 [F]         { display: flex }
@@ -299,7 +388,6 @@ div,item    { display: flex }
 div         { flex-flow: row wrap    }  /* a row of columns */
 item        { flex-flow: column wrap }  /* a column of rows */
 </style>
-
 <style id="stl-globals-spacing-alignment-default">
 /*******************************/
 /* global spacing and aligment */
@@ -318,13 +406,14 @@ p {
     'Band padding' is only active when 'page padding' is off 
 */
 [padded="1"],[simple-band],
-[padded="0"] [band*="padded"] { padding: calc( 2.5vh + 1.5rem)    calc(19.5vw - 3.4rem) }
-[padded="0"] [band*="padxh"]  { padding: calc((2.5vh + 1.5rem)/2) calc(19.5vw - 3.4rem) }
-[padded="0"] [band*="padx2"]  { padding: calc((2.5vh + 1.5rem)*2) calc(19.5vw - 3.4rem) }
+[padded="0"] [band*="padded"]   { padding: calc( 2.5vh + 1.5rem)    calc(19.5vw - 3.4rem) }
+[padded="0"] [band*=".x0"]      { padding: calc((2.5vh + 1.5rem)/2) calc(19.5vw - 3.4rem) }
+[padded="0"] [band*=".x2"]      { padding: calc((2.5vh + 1.5rem)*2) calc(19.5vw - 3.4rem) }
 
-[padded="1"] [band*="padded"] { padding: 0 } /* already padded, no use to pad some more */
+[padded="1"] [band*="padded"]   { padding: 0 } /* already padded, no use to pad some more */
 
 
+[push*="C"] { margin: 0 auto }      /* center element */
 [push*="R"] { margin-left  : auto } /* push elements Right/Left/Top/Bottom */
 [push*="L"] { margin-right : auto }
 [push*="T"] { margin-top   : auto }
@@ -340,7 +429,6 @@ p {
 [outside="H"] { margin: auto calc(50% - 50vw) }
 [outside="V"] { margin: calc(50% - 50vh) auto }
 </style>
-
 <style id="stl-globals-utility-default">
 /**************************************************/
 /* Utility rules, first so they can be overridden */
@@ -392,53 +480,130 @@ hr {
 [outlines="1"] *                  { outline: 1px dashed }
 </style>
 
+
+
+<style id="stl-specifics-default">
+/*********************************************/
+/* All CSS rules specific to this document   */
+/* Last, so they can override anything above */
+/*********************************************/
+/*
+    At some point we need to be specific about what we want
+*/
+/* Responsive body font size (320,14)(1280,20) */
+/* Original style without 'custom variables', IE11 requires this style */
+
+/* Full equation, too CPU intensive */
+/*body { font-size: calc((14 / 16 * 1rem) + (20 - 14) / (1280 - 320) * (100vmin - 320px)) }/**/
+
+/* simplified to save CPU */
+body { font-size: calc(0.625vmin + 0.75rem); line-height: var(--body-lh) }
+
+[band*="rulers"] { 
+    position: fixed; top: 0; z-index: 99999;
+    align-items: center
+}
+
+/* for easy debugging */
+/* make red border touch left/right viewport sides to check sizes of elements at a given width */
+[class^="rule"] {
+    padding: 2px; margin: 2px 0; font-size: 0.625em;
+    background-color: rgba(47,79,79,.1);
+    justify-content: center;
+    border-color: red; border-style: solid; border-width: 0 2px
+}
+.rule-1             { width:  320px }
+.rule-2             { width: 1280px }
+.rule-3             { width: 1903px } /* 1920 - 17px for scrollbar  */
+
+/* not used */
+/*[ribbon*="1"]       { --fork-wb:  2.25rem; background-color: Yellow; color: black; } /* ribbon 1: calc(5vmin +  2.25rem) (320, 52)(1920,132) */
+/*[ribbon*="2"]       { --fork-wb:  6.25rem; background-color: Tomato; color: black; } /* ribbon 2: calc(5vmin +  6.25rem) (320,116)(1920,196) */
+
+[ribbon*="3"]       { --fork-wb: 10.25rem; background-color: Black; }                /* ribbon 3: calc(5vmin + 10.25rem) (320,180)(1920,260) */
+[ribbon*="4"]       { --fork-wb: 14.25rem; background-color: DarkSlateGrey; }        /* ribbon 4: calc(5vmin + 14.25rem) (320,244)(1920,324) */
+[ribbon*="5"]       { --fork-wb: 18.25rem; background-color: MidnightBlue; }         /* ribbon 5: calc(5vmin + 18.25rem) (320,308)(1920,388) */
+
+[band*="hero"]      { align-content: center; align-items: center; text-align: center }
+[band*="hero"]>*    { padding: 0 }
+
+/*
+    Default values (defined in :root) are (x1,y1)(x2,y2) = (320,14)(1280,20)
+    => viewport min/max of 320 and 1280 for fonts suits us just fine...
+*/
+/* specific FONT rules */
+[data-font^="hero"]     { --y1: 12; --y2: 66  }
+[data-font^="subhero"]  { --y1: 12; --y2: 36  }
+[data-font*="hero"]     { --ff: Cutive, serif }
+
+[data-font^="subline"]  { --y1: 12; --y2: 18  }
+[data-font^="code"]     { --y1:  8; --y2: 17; --ff: 'Cutive Mono', monospace; --lh: normal }
+
+/* specific ELEMENT rules */
+/* RECTANGLE */
+[data-LEC^="rect"]      { --x1: 320; --y1: 100; --x2: 1920; --y2: 200 }
+[id^="rect-test"]>*     { margin: .5em; padding: .5em 1em; background-color: DarkSlateGrey; color: White }
+</style>
+
 </head>
 
-
 <body padded="0" outlines="0">
-<div class="fork tr45deg" ribbon="1"><a target="_blank" href="javascript:voi(0)" data-ribbon="1"></a></div>
-<div class="fork tr45deg" ribbon="2"><a target="_blank" href="javascript:voi(0)" data-ribbon="Ribbon 2"></a></div>
 <div class="fork tr45deg" ribbon="3"><a target="_blank" href="https://github.com/renevanderlende/ers-css-fork-ribbon" data-ribbon="Ribbon at Github"></a></div>
 <div class="fork tr45deg" ribbon="4"><a target="_blank" href="https://github.com/renevanderlende/renevanderlende.github.io/tree/master/js" data-ribbon="LinearToCalc Tool 1.1"></a></div>
 <div class="fork tr45deg" ribbon="5"><a target="_blank" href="https://github.com/renevanderlende/ers-css-lec" data-ribbon="LEC at Github"></a></div>
 
-<section band="padded.padx2.hero" C clr="3" plain="0">
-    <div useLEC="font" data-font="hero"   >Linear Equations in CSS</div>
-    <p   useLEC="font" data-font="subline">creating responsive sizes, part of 'easy responsiveness series' &trade;</p>
+<section band="rulers" C>
+    <div class="rule-1"> 320px</div>
+    <div class="rule-2">1280px</div>
+    <div class="rule-3">1920px</div>
+</section>
+
+<section band="padded.x2.hero" C>
+    <div data-LEC="font" data-font="hero"   >Linear Equations in CSS</div>
+    <p   data-LEC="font" data-font="subhero">creating responsive sizes</p>
+    <p   data-LEC="font" data-font="subline">part of 'easy responsiveness series' &trade;</p>
 </section>
 
 <section band="padded" C>
-    <p useLEC="y-intercept" data-font>testing y-intercept form</p>
-    <p useLEC="p-slope"     data-font>testing point-slope form</p>
-
-    <p useLEC data-font="x1">testing scale x1<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
-    <p useLEC data-font="x2">testing scale x2<br>26px at vmin = &nbsp;320px<br>32px at vmin = 1280px</p>
-    <p useLEC data-font="x3">testing scale x3<br>38px at vmin = &nbsp;320px<br>44px at vmin = 1280px</p>
+    <p data-LEC="form1" data-font>testing point-slope form</p>
+    <p data-LEC="form2" data-font>testing y-intercept form</p>
 </section>
 
 <section band="padded" C>
-    <p useLEC="font" data-font="hero"   >HERO</p>
-    <p useLEC="font" data-font="subline">testing HERO and subline</p>
+    <p data-LEC="font.x1">font scale x1 (document base fontsize)<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
+    <p data-LEC="font.x2">font scale x2<br>28px at vmin = &nbsp;320px<br>40px at vmin = 1280px</p>
+    <p data-LEC="font.x3">font scale x3<br>42px at vmin = &nbsp;320px<br>60px at vmin = 1280px</p>
+</section>
+
+<section band="padded" C>
+    <p data-LEC="font" data-font="hero"   >HERO</p>
+    <p data-LEC="font" data-font="subline">testing HERO and subline</p>
     <p>
-        testing 'default' font-size<br>
+        plain &lt;p&gt; for testing &lt;body&gt; font-size with 'hard-coded' linear equation: <em>calc(0.625vmin + 0.75rem)</em><br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
-    <p>
-        testing 'default' font-size<br>
+    <p data-LEC="font" data-font="code">
+        testing default 'code' font-size<br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
-    <p useLEC="font" data-font="code">
-        testing 'code' font-size<br>
-        Cu vel debet nobis, repudiare deseruisse reprehendunt usu ad. Ex elit idque nam.
-        Omnis munere detraxit mei te, eu labore appareat verterem est. Mel ex oporteat consectetuer.
-    </p>
-    <p useLEC="font" data-font="code.x2">
+    <p data-LEC="font.x2" data-font="code">
         testing 'code' font-size at scale x2<br>
-        Cu vel debet nobis, repudiare deseruisse reprehendunt usu ad. Ex elit idque nam.
-        Omnis munere detraxit mei te, eu labore appareat verterem est. Mel ex oporteat consectetuer.
+        Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
+        Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
+</section>
+
+<section band="padded" C>
+    <div id="rect-test-01">
+        <p data-LEC="rect.PT.16:9">box 1<br>portrait rectangle<br>ratio 16:9</p>
+        <p data-LEC="rect.PT.16:9.min.max">box 2<br>portrait rectangle<br>ratio 16:9<br>clamp min.max</p>
+    </div>
+    <div id="rect-test-02">
+        <p data-LEC="rect.LS.16:9">box 3<br>landscape rectangle<br>ratio 16:9</p>
+        <p data-LEC="rect.LS.16:9.min.max">box 4<br>landscape rectangle<br>ratio 16:9<br>clamp min.max</p>
+    </div>
 </section>
 </body>
 </html>
