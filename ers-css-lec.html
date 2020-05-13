@@ -4,46 +4,68 @@
 <meta charset="UTF-8">
 <title>ERS Responsive Sizes in CSS using Linear Equations</title>
 
+<!-- -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cutive&family=Cutive+Mono&family=Open+Sans:wght@300;400;600;700&display=swap"> 
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;500;600;700&display=swap"> 
+<!-- -->
 
-<style id="stl-globals-linear-equations-default">
+<style id="stl-linear-equations-default">
 /******************/
 /* VERY, VERY WIP */
 /******************/
 /*
-    Using 'Linear Equations' to calculate responsive sizes of CSS size properties like
+    math reference:  https://www.mathsisfun.com/equation_of_line.html
+
+    Using 'Linear Equations' to calculate 'responsive' sizes of CSS size properties:
     font-size, width, height, margin, padding, column-width, etc.
-    Basically any size property that accepts the use of the CSS 'calc()' function.
 
-    Use either equation:
+    Basically any size property that accepts the use of the CSS 'calc()' function
+    can be made 'responsive' with a linear equation.
 
+    Using two points on a straight line: p1(x1,y1) and p2(x2,y2)
+    x1,y1 - minimum viewport size and required size at that min vp
+    x2,y2 - maximum viewport size and required size at that max vp
+
+    We use either equation:
     'form1' - point-slope form: y - y1 = m(x - x1), simplified y = y1 + m(x - x1)
               fully substituted: y = y1 + (y2 - y1) / (x2 - x1) * (x - x1)
-              Most commonly used, long and only requires points (x1,y1)(x2,y2), CPU intensive.
+              Most commonly used, long, but only requires points (x1,y1)(x2,y2), CPU intensive.
 
-    'form2' - y-intercept or slope form: y = mx + b
-              Short, but requires manual calculation of m and b, less CPU intensive.
-              (Check linearToCalc 1.1, a tool that converts a linear equation to CSS 'calc()' 
+    'form2' - y-intercept form: y = mx + b
+              fully substituted: y = (y2 - y1) / (x2 - x1) * x + (y1 - (y2 - y1) / (x2 - x1) * x1))
+              Short, but requires manual calculation of m and b, least CPU intensive.
+
+              Before calculating either equation manually, you might want to have a look at
+              'linearToCalc 1.1', a tool that converts a linear equation to CSS 'calc()'. 
               https://github.com/renevanderlende/renevanderlende.github.io/tree/master/js)
 
     Where:
-    --y = RISE, result we need
+    y = RISE, resulting 'responsive' size we need for our HTML elements' property
 
-    --m = SLOPE or (delta Y / delta X) or (rise / run) => (y2 - y1) / (x2 - x1)
+    m = SLOPE or (delta Y / delta X) or (rise / run), steepness of the line
+        full equation: m = (y2 - y1) / (x2 - x1)
 
-    --x = RUN (always current vp size defined as 100vmin,vw,vh or vmax)
+    x = RUN, current viewport size (always defined as 100vmin,vw,vh or vmax)
+        When in doubt: use always '100vmin'
 
-    --b = Y-INTERCEPT, where the line crosses the Y-axis or (value of y at x = 0) => y1 - m * x1
-          (full: y1 - (y2 - y1) / (x2 - x1) * x1)
+        e.g.
+        - font-size: usually document dependend => 100vmin (never vmax)
 
-    To calculate y = mx + b manually:
-    y = (y2 - y1) / (x2 - x1) * x + (y1 - (y2 - y1) / (x2 - x1) * x1))
+        - height or width: when document dependend  => 100vmin or vmax
+                           when vp height dependend => 100vh
+                           when vp width  dependend => 100vw
 
-    Use two points: p1(x1,y1) p2(x2,y2)
-    --x1,--y1 - minimum viewport size and required size at that min vp
-    --x2,--y2 - maximum viewport size and required size at that max vp
+        BEWARE: Currently LEC only supports one vp size value (--x) at a time, usually not a big problem.
+                However, should you need width=vw dependend and height=vh (or v.v.)
+                then use a manually calculated y=mx+b equation like I did with <body> font-size.
 
-    Extra:
+    b = Y-INTERCEPT, where the line crosses the Y-axis (or value of y at viewport size = 0) => y1 - m * x1
+        full equation: b = y1 - (y2 - y1) / (x2 - x1) * x1
+
+    CSS Custom Properties (or CSS variables or cascading variables)
+    --y, --m, --x, --b, --x1, --y1, --x2 and --y2 
+
+    Extra Custom Properties:
     --unit   = convert result to PX or REM
     --factor = multiplication factor to convert current size to specified unit
                defaults: 1 for PX and 1/16 (= 0.0625) for REM
@@ -53,84 +75,66 @@
     --sign   = to get a positive or negative end result (think margin, padding, top, left, etc.)
 */
 
-:root {
-    /* making sure base fontsize is 100% of users' browser font settings */
-    font-size: 100% !important; /* unless overridden by some injected code */
+[data-LEC] {
+    /* ALL custom properties are locally scoped to custom attribute [data-LEC] */
 
-    /* document font defaults */
-    --lh: 1.5; --body-lh: 1.33333;  /* line-height */
-    --fw: 400;                      /* font-weight */
-    --ff: 'Open Sans', sans-serif;  /* font-family */
-
-    /* 
-        Initialization and some default values
-         => y = mx + b for points (320,14)(1280,20) => y = 0.00625x + 12
-    */
-
-    /* define ALL variables in :root to make them globally available */
-    --y : 0; /* equation result */
+    --y: 0; /* equation result */
 
     /*
         Trying out Custom (Property) Cascades by Miriam Suzanne
         https://codepen.io/mirisuzanne/pen/KKdWXGo
     */
-    --x : var(--vx, var(--vw, var(--vh, var(--vm, 100vmin)))); /* either/or */
+    --x: var(--vx, var(--vw, var(--vh, var(--vm, 100vmin)))); /* either/or */
     /*
-        Unfortunately, for now, any assigned value to vx,vw,vh or vm somehow does not compute.
-        Furthermore, we might just as well assign 100vw (etc.) to --x when required.
+        Works: any assigned value to vx,vw,vh or vm will compute and override default 100vmin.
+        However, we might just as well assign 100vw (etc.) to --x directly when required.
 
         To simply initialize, change to: --x: 100vmin;
     */
 
-    --m : 0.00625;          /* 1/160th */
-    --b : 12;               /* size at x = 0 */
+    /* 
+        Initialize with default values:
+         => y = mx + b for points (320,14)(1280,20) => y = 0.00625x + 12
+    */
+    /* Variables to hold two point(x,y) values (equation 'form1')  */
+    --x1:  320; --y1: 14;   /* point p1 => 14px at  320px min vp (pixels, but without unit) */
+    --x2: 1280; --y2: 20;   /* point p2 => 20px at 1280px max vp (ditto) */
 
-    --x1:  320; --y1: 14;   /* point p1 => 14px at  320px min vp */
-    --x2: 1280; --y2: 20;   /* point p2 => 20px at 1280px max vp */
+    /* Variables to hold values (equation 'form2') */
+    --m: 0.00625;           /* 1/160th (decimal) */
+    --b: 12;                /* size at x = 0 (pixels, but without unit) */
 
+    /* Variables for unit conversion (set to your own default as required) */
     --unit  : 1rem;         /* preferred default unit to use in the equation     */
     --factor: 0.0625;       /* 1/16 as by default REM is used in the equation    */
                             /* change to '1px' and '1' if you want to use pixels */
 
-    --scale: 1;             /* to multiply y with scale */
-    --ratio: 1;             /* to multiply y with some ratio (esp. useful with heights and widths) */
+    --scale: 1;             /* to scale resulting y */
+    --ratio: 1;             /* to multiply y with a ratio (esp. useful with heights and widths) */
     --sign : 1;             /* set to -1 to negate LEC result, default 1 = positive */
                             /* useful when going beyond an elements' top,right,bottom,left: 0 */
 }
-/* Generic FONT rule */
-[data-font] { font-family: var(--ff); line-height: var(--lh); font-weight: var(--fw) }
 
-
-[data-LEC],           /* default for all uses */
-[data-LEC^="form1"] { /* or generic 'form1'   */
-    /* Extra: multiply with scale and sign */
-    --y: calc( (
-                 var(--y1) * var(--unit) * var(--factor) + 
-                (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) *
-                (var(--x)  - var(--x1) * 1px)
-               ) * var(--scale) * var(--sign) );
-
-    /* TODO: verify correct use/position of unit and factor and 1px */
-}
-[data-LEC^="form2"] { /* generic 'form2' */
-    /* Extra: ditto */
-    --y: calc( var(--m) * var(--x) + (var(--b)) * 
-               var(--unit) * var(--factor) * var(--scale) * var(--sign) ); 
-}
+/*******************************************/
+/* Various predefined LEC parameter values */
+/*******************************************/
 
 /* LEC unit conversions */
-[data-LEC*=".rem"]      { --unit: 1rem; --factor: 0.0625 } /* 1/16, default */
-[data-LEC*=".px" ]      { --unit: 1px ; --factor: 1      }
-/* extend this list with your own */
+[data-LEC*=".rem"]      { --unit: 1rem; --factor: 0.0625 } /* default */
+[data-LEC*=".px" ]      { --unit: 1px ; --factor: 1 }
+/*
+    Extend this list with your own unit conversions
+    (see bottom <script> in this document for a full list of units)
+*/
 
 /* positive or negative final result */
 [data-LEC*=".pos"]      { --sign:  1 } /* default */
 [data-LEC*=".neg"]      { --sign: -1 }
 
-/*******************************************/
-/* Various predefined LEC parameter values */
-/* (check defaults in above :root)         */
-/*******************************************/
+[data-LEC*=".vm"],[vm]  { --x: 100vmin } /* default */
+[data-LEC*=".vh"],[vh]  { --x: 100vh   }
+[data-LEC*=".vw"],[vw]  { --x: 100vw   }
+[data-LEC*=".vx"],[vx]  { --x: 100vmax }
 
 /* A few common ratios (5 significant decimals are more than enough) */
 [data-LEC*=".1:1"  ]    { --ratio: 1       } /* default */
@@ -144,6 +148,8 @@
 [data-LEC*=".9:16" ]    { --ratio: 0.5625  }
 [data-LEC*=".17:10"]    { --ratio: 1.7     }
 [data-LEC*=".10:17"]    { --ratio: 0.58824 }
+[data-LEC*=".gr:1" ]    { --ratio: 1.618   } 
+[data-LEC*=".1:gr" ]    { --ratio: 0.618   }
 
 /* some default scales */
 [data-LEC*=".x0"]       { --scale: 0.5 }
@@ -151,62 +157,155 @@
 [data-LEC*=".x2"]       { --scale: 2   }
 [data-LEC*=".x3"]       { --scale: 3   }
 
-/* Assigning value of y to various sizes */
-[data-LEC^="font"]      { font-size: var(--y) }
+/* WIP */
+[data-LEC*=".clp"], /* clip */
+[data-LEC*=".min"],
+[data-LEC*=".max"]      { overflow: hidden }
+
+
+/*****************/
+/* THE EQUATIONS */
+/*****************/
+[data-LEC] {
+    --cv-unit: calc(var(--unit) * var(--factor)); /* shortcut to unit conversion */
+    --cv-all : calc(var(--cv-unit) * var(--scale) * var(--sign));/* shortcut to all multipliers */
+}
+[data-LEC],           /* default form for all uses */
+[data-LEC^="form1"] { /* generic 'form1' */
+    /*
+        'form1' calculates a size using point info: (x1,y1)(x2,y2).
+        To enable clamping y to a min/max value (like you would do in a @media query)
+        a 2 variable workaround is required as explained at '[data-LEC*="clamp"]'.
+
+        IMPORTANT: Do not use/modify '--y-int-clamp' directly,
+                   just treat it as some internal variable.
+    */
+    --y-int-clamp: calc(
+                         (var(--y1) * var(--cv-unit) + 
+                         (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) *
+                         (var(--x ) - var(--x1) * 1px)) *
+                         var(--scale) * var(--sign)
+                       );
+
+    --y: var(--y-int-clamp);
+}
+[data-LEC^="form2"] { /* generic 'form2' */
+    /*
+        'form2' calculates a size using variables m,x and b only.
+        To be able to clamp y to a min/max value, here too the 2 variable workaround is required.
+
+        NOTE: make sure when you clamp 'form2' that y1 and y2 have the required min/max values
+              (otherwise the current (default) values of y1 and y2 will be used).
+    */
+    --y-int-clamp: calc(
+                         (var(--m) * var(--x) + var(--b) *
+                          var(--cv-unit)) * var(--scale) * var(--sign)
+                       );
+
+    --y: var(--y-int-clamp);
+}
+/*
+    min/max clamping, two variable workaround
+
+    A temporary variable is needed to enable clamping of y to min.max vp size,
+    because code like the following (pseudo) CSS will not work:
+
+    [LEC]           { --y: calc(...LEC...) }
+    [LEC*='clamp']  { --y: clamp(calc(--y1), var(--y), calc(--y2) ) }
+
+    The result of var(--y) in '[LEC*='clamp']' will
+    evaluates to 'clamp(calc(--y1), var(--y), calc(--y2))'
+    instead of   'calc(...LEC...)', like it would in Javascript: y = clamp(y1,y,y2)
+
+    Hence: y = clamp(calc(--y1), --y-int-clamp, calc(--y2))
+*/
+
+/* Clamp y between y1 and y2 using CSS min(),max() */
+[data-LEC*=".clamp"] {
+/*
+    Syntax: data-LEC = ".clamp"  to constraint y between y1 and y2
+*/
+    --y: max( calc(var(--y1) * var(--cv-unit) * var(--scale) * var(--sign)),
+                   min(var(--y-int-clamp),
+                       calc(var(--y2) * var(--cv-unit) * var(--scale) * var(--sign)))
+            );
+}
+/*
+    Preferred clamping of y uses CSS 'clamp(min, value, max)'
+    which is one CSS func() call less than using min()/max(),
+    but currently not supported in Safari therefore disabled.
+
+    However, below rule tested to work in Chrome, Edge and Firefox
+*/
+
+/* Clamp y between y1 and y2 using CSS clamp() *//*
+[data-LEC*=".clamp"] {
+    --y: clamp( calc(var(--y1) * var(--cv-unit) * var(--scale) * var(--sign)),
+                var(--y-int-clamp),
+                calc(var(--y2) * var(--cv-unit) * var(--scale) * var(--sign))
+              );
+}/**/
 
 /*
-    Unfortunately (as per May 2020) @media does not accept var() yet.
-    So, if you want to have min/max constraints on responsive sizes you will need
-    to add a @media for each --x1 and --x2 value you use to calculate a size.
-    This is one of the more important reasons I mostly use min=320 and max=1280 (or 1920) only.
-
-    The @media would otherwise have been something like this:
+    To clamp either minimum or maximum value use one of the below rules.
+    Using both '.min' and '.max' will revert back to the rule above!
     
-    @media (max-width: var(--x1)),(max-height: var(--x1)) { ... }
-    @media (max-width: var(--x2)),(max-height: var(--x2)) { ... }
-
-    For now, just use 320px and 1280px as min.max viewport size for fonts
+    Syntax: either data-LEC=".clamp.min" to constraint y to y1
+            or     data-LEC=".clamp.max" to constraint y to y2
 */
+[data-LEC*=".clamp"]:not([data-LEC*=".max"])[data-LEC*=".min"] {
+    --y: max(calc(var(--y1) * var(--cv-unit) * var(--scale) * var(--sign)),
+                  var(--y-int-clamp));
+}
+[data-LEC*=".clamp"]:not([data-LEC*=".min"])[data-LEC*=".max"] {
+    --y: min(calc(var(--y2) * var(--cv-unit) * var(--scale) * var(--sign)),
+                   var(--y-int-clamp));
+}
+/*
+    TODO: add possibility to use other min/max variables than only y1 and y2
+          [data-LEC*="altclamp"] { ... } ??
+*/
+
+/********************************/
+/* USAGE OF THE EQUATION RESULT */
+/********************************/
+
+/*************/
+/* FONTSIZES */
+/*************/
+[data-LEC*=".font"] { font-size: var(--y) }
+
+/***********************/
+/* WIDTH and/or HEIGHT */
+/***********************/
+/* Calculate height and width of the rectangle depending on its orientation (PT = Portrait or LS = Landscape) */
+[data-LEC*=".rect"][data-LEC*=".PT"] { height: calc(var(--y) * var(--ratio)); width : var(--y) }
+[data-LEC*=".rect"][data-LEC*=".LS"] { width : calc(var(--y) * var(--ratio)); height: var(--y) }
+
+[data-LEC*=".wid"][data-LEC*=".PT"] { width : var(--y) }
+[data-LEC*=".hgt"][data-LEC*=".PT"] { height: calc(var(--y) * var(--ratio)) }
+[data-LEC*=".wid"][data-LEC*=".LS"] { width : calc(var(--y) * var(--ratio)) }
+[data-LEC*=".hgt"][data-LEC*=".LS"] { height: var(--y) }
+
 /*
     Add Media Queries for each min/max viewport size you have used for x1 and x2 values you used in
     your equations when you need to contstraint the results to the min/max y1 and y2 values.
-*/
 
-@media (max-width:  320px),(max-height:  320px) {
-    [data-LEC^="font"] { font-size: calc(var(--y1) * var(--unit) * var(--factor) * var(--scale)) }
-    /* 
-        Add selectors for sizes  at min vp like padding, margin, etc. using 'custom variables', of course!
-        BEWARE: element (min-/max-)width or height use a different approach.
-    */
-}
-@media (min-width: 1280px),(min-height: 1280px) { 
-    [data-LEC^="font"] { font-size: calc(var(--y2) * var(--unit) * var(--factor) * var(--scale)) }
-    /*
-        same strategy here for sizes at max vp ...
-    */
-}
-
-/*
     As --y1 and --y2 are being used for [.min][.max] instead of --y we need
     to put --unit, --factor and --scale into the equations below again. 
 
-    And to prevent repeting code like (4 times):
+    And to prevent repeting code like:
 
         var(--y) * var(--unit) * var(--factor) * var(--scale)
         var(--y) * var(--unit) * var(--factor) * var(--scale) * var(--ratio)
 
-    we create temporary variables (--mult1,--mult2) instead to create the
-    multiplication factor used in the linear equation. 
-
-    ...less confusion, less maintenance.
+    we create temporary variables (below) instead to create the
+    multiplication factor used in the equations. 
 */
-/* Calculate height and width of the rectangle depending on its orientation (PT = Portrait or LS = Landscape) */
-[data-LEC^="rect"][data-LEC*=".PT"] { height: calc(var(--y) * var(--ratio)); width : var(--y) }
-[data-LEC^="rect"][data-LEC*=".LS"] { width : calc(var(--y) * var(--ratio)); height: var(--y) }
-
-[data-LEC^="rect"] {
-    --mult1: calc( var(--unit) * var(--factor) * var(--scale) ); 
-    --mult2: calc( var(--unit) * var(--factor) * var(--scale) * var(--ratio) ); 
+[data-LEC*=".rect"] {
+    /* Considered to be 'internal variables', do not assign values directly */
+    --int-rect1: calc(var(--cv-unit) * var(--scale)); 
+    --int-rect2: calc(var(--cv-unit) * var(--scale) * var(--ratio)); 
 }
 /*
     Instead of a series of Media Queries to constraint all kind of rectangles to their
@@ -214,16 +313,71 @@
     [use-LEC] equation property instead. This way we can decide to use the min/max
     constraint on a 'per rectangle' basis.
 */
-/* Constraints for rectangle at minimum viewport size */
-[data-LEC^="rect"][data-LEC*=".PT"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--mult1)); min-height: calc(var(--y1) * var(--mult2)) }
-[data-LEC^="rect"][data-LEC*=".LS"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--mult2)); min-height: calc(var(--y1) * var(--mult1)) }
-/* Constraints for rectangle at maximum viewport size */
-[data-LEC^="rect"][data-LEC*=".PT"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--mult1)); max-height: calc(var(--y2) * var(--mult2)) }
-[data-LEC^="rect"][data-LEC*=".LS"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--mult2)); max-height: calc(var(--y2) * var(--mult1)) }
+/* Constraints for a rectangle at minimum viewport size */
+[data-LEC*=".rect"][data-LEC*=".PT"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--int-rect1)); min-height: calc(var(--y1) * var(--int-rect2)) }
+[data-LEC*=".rect"][data-LEC*=".LS"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--int-rect2)); min-height: calc(var(--y1) * var(--int-rect1)) }
+/* Constraints for a rectangle at maximum viewport size */
+[data-LEC*=".rect"][data-LEC*=".PT"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--int-rect1)); max-height: calc(var(--y2) * var(--int-rect2)) }
+[data-LEC*=".rect"][data-LEC*=".LS"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--int-rect2)); max-height: calc(var(--y2) * var(--int-rect1)) }
 
+@media (max-width: 320px) {
+    [data-LEC^="padLR"] {
+        padding-left : calc(var(--y1) * var(--cv-unit) * var(--scale));
+        padding-right: calc(var(--y1) * var(--cv-unit) * var(--scale))
+     }
+    [data-LEC^="padTB"] {
+        padding-top   : calc(var(--y1) * var(--cv-unit) * var(--scale));
+        padding-bottom: calc(var(--y1) * var(--cv-unit) * var(--scale))
+     }
+    /* 
+        Add selectors for sizes  at min vp like padding, margin, etc. using 'custom variables'
+        BEWARE: element (min-/max-)width or height uses a different approach.
+    */
+}
+@media (min-width: 1280px) { 
+    /*
+        same strategy here for sizes at max vp ...
+    */
+}
 </style>
+<style id="stl-linear-equations-examples">
+/*********************************************/
+/* All CSS rules specific to this document   */
+/* Last, so they can override anything above */
+/*********************************************/
+/* ...at some point we need to be specific about what we want... */
+/*
+    Default values (defined in [data-LEC]) are (x1,y1)(x2,y2) = (320,14)(1280,20)
+    => using only default viewport min/max of 320 and 1280 for fonts works just fine.
+*/
+/* LEC demo FONT rules */
+[data-font^="hero"]     { --y1: 12; --y2: 66 }
+[data-font^="subhero"]  { --y1: 12; --y2: 36 }
+[data-font^="subline"]  { --y1: 12; --y2: 18 }
+[data-font^="code"]     { --y1:  8; --y2: 20 }
 
+/* LEC demo RECTANGLE/WIDTH/HEIGHT rules */
+[data-rect*="test"]>*   { --x1: 320; --y1: 75; --x2: 1920; --y2: 225 }
 
+/* demo cards */
+.card-outer {
+/*
+    parent width (at 320px and 1920px)
+    minus scrollbar width (17px)
+    minus parent padding (2*8px and 2*320px )
+    divide by columns wanted at min (2 cols at 320) and max (4 cols at 1920)
+
+    min = ( 303 -  16)/2 = 143.5
+    max = (1903 - 640)/4 = 315.75‬
+
+    LEC with points p1(320,143.5) and p2(1920,315.75)
+*/
+    --x1: 320; --y1: 143.5; --x2: 1920; --y2: 315.75;
+    --x: 100vw; /* because viewport width depended */
+    
+    --ratio: 1.6; /* some not predefined ratio */
+}
+</style>
 
 <style id="stl-widget-ribbon-default">
 /*****************************/
@@ -238,24 +392,12 @@
 
     z-index: 999999; /* on top of everything */
     /* maximum value is usually 2^(32 - 1): 32bits number -1 for negative sign */
-
-    /* Some default colors */
-    background-color: Black; color: White;
-
-    box-shadow: 0px 3px 5px -1px rgba(0,0,0,.4);
-    opacity: 0.8; /* Little 'shine through' for :hover */
 }
 .fork:hover { opacity: 1 }
 
 .fork a {
     box-sizing: border-box; /* [DITTO] */
-    width: 100%; padding: 0.25em 0;
-    line-height: 1; white-space: nowrap; text-align: center;
-
-    font-weight: bold; color: inherit; text-decoration: none; 
-
-    border-style: dotted;
-    border-color: inherit transparent;
+    width: 100%;
 }
 /* [OPTIONAL] How to use a custom property for text */
 .fork a:before { content: attr(data-ribbon) }
@@ -265,11 +407,45 @@
     transform: rotate(45deg);   /* at a 45 degree angle. (Do not change as below cos() will fail) */
 }
 </style>
+<style id="stl-widget-ribbon-fixed-ie">
+/***************************/
+/* fork ribbon IE specific */
+/***************************/
+.fork {
+    /* for IE, fixed responsive sizes (or use some 'CSS custom variables' polyfill) */
+    width    : calc(5vmin     + 10.25rem); /* (320,180)(1920,260) */
+    height   : calc(0.5vmin   +  1.4rem) ; /* (320, 24)(1920, 32) */
+    font-size: calc(0.625vmin +  0.5rem) ; /* (320, 10)(1280, 16) */
+}
+.fork a { border-width: 2px 0 }
+
+.fork.tr45deg {
+    /* ribbon scale  = 1.1      */
+    /* sqrt(2)       = 1.4142…  */
+    /* (180-45deg)/2 = 67.5     */
+    /* cos(67.5)^2   = 0.38268343^2 = 0.1464466, to move element right */
+    /* to go above top and beyond right margins: multiply with -1 to negate final result */
+
+    /* after 45deg rotation (pivot around top/left corner) 'fork' height becomes diagonal of a square */
+    /* To get the side (height and/or width) of a square from its diagonal (= hypotenuse of a traingle)
+       => hypotenuse / sqrt(2) */
+
+    /* to move 'fork' up: ribbon height (which is now hypotenuse) / 1.4142 */
+    /* where height = 0.5vmin + 1.4rem * scale */
+
+    /* distance to go right = (hypotenuse / 1.4142) + (2 * width * cos^2) * scale * -1 */
+    /* (discussed and verified on 'MathIsFun Forum': http://www.mathisfunforum.com/viewtopic.php?id=25620) */
+    /* This works like a charm, so cool! (Thanks a bunch, Bob) */
+
+    top  : calc((0.5vmin + 1.4rem) / 1.4142 * 1.1 * -1);
+    right: calc((((0.5vmin + 1.4rem) / 1.4142) + (2 * (5vmin + 10.25rem) * 0.1464466)) * 1.1 * -1);
+}
+</style>
 <style id="stl-widget-ribbon-custom-variables">
 /*************************************/
 /* fork ribbon with custom variables */
 /*************************************/
-:root {
+.fork {
     /* for all others, variable scales */
     --fork-scale     : 1.1; /* set these to your desired scales */
     --fork-scale-text: 1;
@@ -284,23 +460,12 @@
     --sqrt-2: 1.4142;                       /* Math.sqrt(2) ~ 1.4142135... */
     --cos2   : 0.1464466;                   /* cos(67.5) => 67.5 = (180deg - 45deg) / 2 => cos^2 = 0.1464466 */
                                             /* Used to move rotated ribbon up and right */
-
-    /* after 45deg rotation (pivot around top/left corner) 'fork' height becomes diagonal of a square */
-    /* To get the side (height and/or width) of a square from its diagonal (= hypotenuse of a traingle)
-       => hypotenuse / sqrt(2) */
-
-    /* to move 'fork' up: ribbon height (which is now hypotenuse) / 1.4142 */
-    /* where height = 0.5vmin + 1.4rem * scale */
-
-    /* distance to go right = (hypotenuse / 1.4142) + (2 * width * cos^2) * scale * -1 */
-    /* discussed and verified on 'MathIsFun Forum': http://www.mathisfunforum.com/viewtopic.php?id=25620 */
-    /* This works like a charm, so cool! (Thanks a bunch, Bob) */
 }
-.fork a { border-width: var(--fork-bd) 0; padding: calc(var(--fork-scale)/4 * 1rem) 0 }
+.fork a { border-width: var(--fork-bd) 0 }
 
 .fork { /* default ribbon */
-    width    : calc((var(--fork-wm) * var(--fork-x) + var(--fork-wb)) * var(--fork-scale)); /* (320,180)(1920,260) */
-    height   : calc((var(--fork-hm) * var(--fork-x) + var(--fork-hb)) * var(--fork-scale)); /* (320, 24)(1920, 32) */
+    width    : calc((var(--fork-wm) * var(--fork-x) + var(--fork-wb)) * var(--fork-scale));      /* (320,180)(1920,260) */
+    height   : calc((var(--fork-hm) * var(--fork-x) + var(--fork-hb)) * var(--fork-scale));      /* (320, 24)(1920, 32) */
     font-size: calc((var(--fork-fm) * var(--fork-x) + var(--fork-fb)) * var(--fork-scale-text)); /* (320, 10)(1280, 16) */
 }
 .fork.tr45deg {
@@ -315,6 +480,36 @@
     right: calc((((var(--fork-hm) * var(--fork-x) + var(--fork-hb)) / var(--sqrt-2)) + (2 * (var(--fork-wm) * var(--fork-x) + var(--fork-wb)) * var(--cos2))) * var(--fork-scale) * -1);
 }
 </style>
+<style id="stl-widget-ribbon-theme-default">
+/***********************/
+/* fork ribbon theming */
+/***********************/
+.fork {
+    background-color: Black; color: White;
+
+    box-shadow: 0px 3px 5px -1px rgba(0,0,0,.4);
+    opacity: 0.9;
+}
+.fork:hover { opacity: 1 }
+
+.fork a {
+    line-height: 1.5; /* change lh to move borders up down */
+
+    font-weight: bold; color: inherit; white-space: nowrap;
+    text-decoration: none; text-align: center;
+    border-style: dotted; border-color: inherit transparent;
+}
+</style>
+<style id="stl-widget-ribbon-examples">
+/*****************************************/
+/* Example ribbons used in this document */
+/*****************************************/
+[ribbon*="1"] { --fork-wb:  2.25rem; background-color: Yellow; color: black; } /* ribbon 1: calc(5vmin +  2.25rem) (320, 52)(1920,132) */
+[ribbon*="2"] { --fork-wb:  6.25rem; background-color: Tomato; color: black; } /* ribbon 2: calc(5vmin +  6.25rem) (320,116)(1920,196) */
+[ribbon*="3"] { --fork-wb: 10.25rem; background-color: Black; }                /* ribbon 3: calc(5vmin + 10.25rem) (320,180)(1920,260) */
+[ribbon*="4"] { --fork-wb: 14.25rem; background-color: DarkSlateGrey; }        /* ribbon 4: calc(5vmin + 14.25rem) (320,244)(1920,324) */
+[ribbon*="5"] { --fork-wb: 18.25rem; background-color: DarkSlateBlue; }        /* ribbon 5: calc(5vmin + 18.25rem) (320,308)(1920,388) */
+</style>
 
 <style id="stl-globals-default">
 /**************************/
@@ -326,20 +521,49 @@ body                { min-height: 100vh }
 *::before,*::after,
  *                  { box-sizing: inherit }
 
-
 img                 { width: 100%; display: block; object-fit: cover }
+sup                 { vertical-align: super; font-size: 0.625em }
 
 :focus              { outline: -webkit-focus-ring-color auto 0; outline-width: 0 } /* for Edge 2020 */
 ::-moz-focus-inner  { padding: 0; border: 0 } /* Kill Firefox outline */
 </style>
-<style id="stl-gobals-typography-default">
+<style id="stl-globals-custom-variables-default">
+/***************************/
+/* Preferred font defaults */
+/***************************/
+:root{
+    /* document font defaults */
+    --lh: 1.5;                      /* line-height */
+    --fw: 400;                      /* font-weight */
+
+    --ff: 'Open Sans', sans-serif;  /* font-families */
+    --ffs: 'Cutive', serif;
+
+    --ffm: 'Inconsolata','Cutive Mono', monospace; --lhm: normal; --fwm: 500;
+}
+body { font-family: var(--ff); line-height: var(--lh) }
+</style>
+<style id="stl-globals-typography-default">
 /***********************************/
 /* Default global typography rules */
 /***********************************/
+:root{
+    /* making sure base fontsize is 100% of users' browser font settings */
+    font-size: 100% !important; /* unless overridden by some injected code */
+}
+/* Responsive body font size (320,14)(1280,20) */
+/* Original style without 'custom variables', IE11 requires this style */
+
+/* Full equation */
+/*body { font-size: calc((14 / 16 * 1rem) + (20 - 14) / (1280 - 320) * (100vmin - 320px)) }/**/
+
+/* simplified, but same result as above */
+body { font-size: calc(0.625vmin + 0.75rem) }
+
 h1  { font-size: 2rem } /* override FF+ H1 nesting behaviour */
 a   { color: inherit }
 </style>
-<style id="stl-flexbox-banding-default">
+<style id="stl-globals-flexbox-banding-default">
 /******************/
 /* simple banding */
 /******************/
@@ -371,7 +595,7 @@ a   { color: inherit }
 [block],[block*="rows"] { flex-flow: column wrap }  /* inverse default of [band] */
         [block*="cols"] { flex-flow: row wrap    }
 </style>
-<style id="stl-flexbox-simple-default">
+<style id="stl-globals-flexbox-simple-default">
 /******************/
 /* FLEXBOX LAYOUT */
 /******************/
@@ -385,7 +609,7 @@ a   { color: inherit }
 [W]         { flex-wrap: wrap }
 
 div,item    { display: flex }
-div         { flex-flow: row wrap    }  /* a row of columns */
+div         { flex-flow: row wrap }     /* a row of columns */
 item        { flex-flow: column wrap }  /* a column of rows */
 </style>
 <style id="stl-globals-spacing-alignment-default">
@@ -412,8 +636,7 @@ p {
 
 [padded="1"] [band*="padded"]   { padding: 0 } /* already padded, no use to pad some more */
 
-
-[push*="C"] { margin: 0 auto }      /* center element */
+[push*="C"] { margin: 0 auto      } /* center element */
 [push*="R"] { margin-left  : auto } /* push elements Right/Left/Top/Bottom */
 [push*="L"] { margin-right : auto }
 [push*="T"] { margin-top   : auto }
@@ -480,131 +703,365 @@ hr {
 [outlines="1"] *                  { outline: 1px dashed }
 </style>
 
+<style id="stl-theme-1-default">
+/*****************************************/
+/* Main Theme: DarkSlateGrey and EggYoke */
+/*****************************************/
+body                { background-color: rgba(47, 79, 79,.4); color: White }
 
+h1,h2,h3,h4,h5,h6   { color: rgba(47, 79, 79,.56) }
+b                   { color: rgba(47, 79, 79,.8) }
 
-<style id="stl-specifics-default">
-/*********************************************/
-/* All CSS rules specific to this document   */
-/* Last, so they can override anything above */
-/*********************************************/
-/*
-    At some point we need to be specific about what we want
-*/
-/* Responsive body font size (320,14)(1280,20) */
-/* Original style without 'custom variables', IE11 requires this style */
+[band*="info"] h3,
+[band*="info"] h5   { color: inherit; opacity: .56 }
 
-/* Full equation, too CPU intensive */
-/*body { font-size: calc((14 / 16 * 1rem) + (20 - 14) / (1280 - 320) * (100vmin - 320px)) }/**/
+strong              { color: rgba(255,204,1,1) }
 
-/* simplified to save CPU */
-body { font-size: calc(0.625vmin + 0.75rem); line-height: var(--body-lh) }
+hr                  { border: 1px solid rgba(47, 79, 79,.1); border-top: none }
 
-[band*="rulers"] { 
-    position: fixed; top: 0; z-index: 99999;
-    align-items: center
-}
+/* Try and set 'column-rule' to 200px, just for fun! */
+[newspaper]         { column-rule: 2px dotted rgba(255,204,1,.2) }
 
-/* for easy debugging */
+:focus              { outline: dotted rgba(47, 79, 79,.8) 2px }
+::selection         { background-color: DarkSlateGrey; color: White }
+
+/******************/
+/* theme 1 colors */
+/******************/
+[clr="0"]           { background-color: rgba(47, 79, 79,.9); color: White }
+[clr="1"]           { background-color: #fefefe; color: #1e1e1e }
+[clr="2"]           { background-color: rgba(30,30,30,.95); color: rgba(255,204,1,1) }
+[clr="3"]           { background-color: rgba(255,204,1,1); color: #1e1e1e }
+[clr="F"]           { background-color: White  ; color: black }
+</style>
+
+<style id="stl-page-specific-debug">
+/***************************/
+/* Rule for easy debugging */
+/***************************/
+[debug="0"] [band*="rulers"] { display: none }
+[debug="1"] [band*="rulers"] { position: sticky; top: 0; z-index: 99999; align-items: center; overflow: hidden }
+
 /* make red border touch left/right viewport sides to check sizes of elements at a given width */
 [class^="rule"] {
     padding: 2px; margin: 2px 0; font-size: 0.625em;
-    background-color: rgba(47,79,79,.1);
+    background-color: rgba(72,61,139,.8) /* DarkSlateBlue */; color: White;
     justify-content: center;
-    border-color: red; border-style: solid; border-width: 0 2px
+    border-color: red; border-style: solid; border-width: 0 4px
 }
-.rule-1             { width:  320px }
-.rule-2             { width: 1280px }
-.rule-3             { width: 1903px } /* 1920 - 17px for scrollbar  */
+.rule-1 { width:  320px }
+.rule-2 { width: 1280px }
+.rule-3 { width: 1903px } /* 1920 - 17px for scrollbar */
 
-/* not used */
-/*[ribbon*="1"]       { --fork-wb:  2.25rem; background-color: Yellow; color: black; } /* ribbon 1: calc(5vmin +  2.25rem) (320, 52)(1920,132) */
-/*[ribbon*="2"]       { --fork-wb:  6.25rem; background-color: Tomato; color: black; } /* ribbon 2: calc(5vmin +  6.25rem) (320,116)(1920,196) */
+[debug="1"] [data-LEC] {
+    position: relative;
+}
+[debug="1"] [data-LEC]::after {
+    position: absolute; bottom: -1.125em; left: 0; z-index: 1; color: purple;
+    content: 'bla';
+}
+</style>
+<style id="stl-page-specific-default">
+/***************************************/
+/* PAGE LAYOUT RULES (non-LEC related) */
+/***************************************/
+/* BAND rules */
+[band*="hero"]          { align-content: center; align-items: center; text-align: center }
+[band*="hero"]>*        { padding: 0 }
 
-[ribbon*="3"]       { --fork-wb: 10.25rem; background-color: Black; }                /* ribbon 3: calc(5vmin + 10.25rem) (320,180)(1920,260) */
-[ribbon*="4"]       { --fork-wb: 14.25rem; background-color: DarkSlateGrey; }        /* ribbon 4: calc(5vmin + 14.25rem) (320,244)(1920,324) */
-[ribbon*="5"]       { --fork-wb: 18.25rem; background-color: MidnightBlue; }         /* ribbon 5: calc(5vmin + 18.25rem) (320,308)(1920,388) */
+/* FONT rules */
+[data-font]             { font-family: var(--ff); line-height: var(--lh); font-weight: var(--fw) }
 
-[band*="hero"]      { align-content: center; align-items: center; text-align: center }
-[band*="hero"]>*    { padding: 0 }
+[data-font*="hero"]     { --ff: var(--ffs) } /* getting serif font through 'var()' */
+[data-font^="code"]     { --ff: var(--ffm); --lh: var(--lhm); font-weight: var(--fwm) } /* ditto for 'monospace' */
 
-/*
-    Default values (defined in :root) are (x1,y1)(x2,y2) = (320,14)(1280,20)
-    => viewport min/max of 320 and 1280 for fonts suits us just fine...
-*/
-/* specific FONT rules */
-[data-font^="hero"]     { --y1: 12; --y2: 66  }
-[data-font^="subhero"]  { --y1: 12; --y2: 36  }
-[data-font*="hero"]     { --ff: Cutive, serif }
+/* RECTANGLE/WIDTH/HEIGHT test rules */
+.rect-test              { counter-reset: boxno; width: 100% }
 
-[data-font^="subline"]  { --y1: 12; --y2: 18  }
-[data-font^="code"]     { --y1:  8; --y2: 17; --ff: 'Cutive Mono', monospace; --lh: normal }
+[data-rect*="test"]     { justify-content: center; font-size: 0.75em }
 
-/* specific ELEMENT rules */
-/* RECTANGLE */
-[data-LEC^="rect"]      { --x1: 320; --y1: 100; --x2: 1920; --y2: 200 }
-[id^="rect-test"]>*     { margin: .5em; padding: .5em 1em; background-color: DarkSlateGrey; color: White }
+[data-rect*="test"]>*   { counter-increment: boxno;
+                          justify-content: center; align-content: flex-start;
+                          width: 100%; margin: .125rem; padding: .25rem 1rem;
+                          background-color: rgba(47, 79, 79,.9) /* DarkSlateGrey */; color: White }
+
+[data-rect*="test"]>*>span         { width: 100%; text-align: right; font-weight: bold; color: rgba(255,204,1,1) }
+[data-rect*="test"]>*>span::before { content: counter(boxno) }
+</style>
+<style id="stl-page-specific-cards">
+[band*=".cardlist"] { justify-content: center; flex-grow: 1 }
+
+.card-outer {
+    /* width/height defined with LEC */
+    font-size: calc(0.625vw + 6px);     /* (320,8)(1920,18) at 320 => 143/3.15 ~ 45% of fs at 1920 */
+    padding  : calc(0.25vmin + 1.2px);  /* (320,2)(1920,6) */
+}
+.card-inner {
+    width: 100%; height: 100%;      /* fill parent */
+    padding: calc(0.5vw + 14.4px);  /* (320,16)(1920,24) GMC */
+
+    background-color: rgba(255,204,1,1); color: Black;
+}
+
+/* Some eye-candy */
+.card-inner {
+    /* GMC elevation 1dp */
+    box-shadow: 0px 2px 1px -1px rgba(0,0,0,.20),
+                0px 1px 1px  0px rgba(0,0,0,.14),
+                0px 1px 3px  0px rgba(0,0,0,.12);
+}
+.card-inner:hover {
+    transform: scale(1.01);
+    /* GMC elevation 3dp */
+    box-shadow: 0px 3px 3px -2px rgba(0,0,0,.20),
+                0px 3px 4px  0px rgba(0,0,0,.14),
+                0px 1px 8px  0px rgba(0,0,0,.12);
+}
+.card-inner:active:not(:focus) { transform: scale(1) }
 </style>
 
 </head>
 
-<body padded="0" outlines="0">
+<body padded="0" outlines="0" debug="0">
+<!--
+<div class="fork tr45deg" ribbon="1"><a target="_blank" href="javascript:void(0)" data-ribbon="R1"></a></div>
+<div class="fork tr45deg" ribbon="2"><a target="_blank" href="javascript:void(0)" data-ribbon="R2"></a></div>
+-->
 <div class="fork tr45deg" ribbon="3"><a target="_blank" href="https://github.com/renevanderlende/ers-css-fork-ribbon" data-ribbon="Ribbon at Github"></a></div>
 <div class="fork tr45deg" ribbon="4"><a target="_blank" href="https://github.com/renevanderlende/renevanderlende.github.io/tree/master/js" data-ribbon="LinearToCalc Tool 1.1"></a></div>
 <div class="fork tr45deg" ribbon="5"><a target="_blank" href="https://github.com/renevanderlende/ers-css-lec" data-ribbon="LEC at Github"></a></div>
 
+<section band="padded.x2.hero" C clr="3">
+    <p data-LEC=".font.clamp.min.max" data-font="hero"   >linear equations in CSS</p>
+    <p data-LEC=".font"       data-font="subhero">creating responsive sizes</p>
+    <p data-LEC=".font"       data-font="subline">part of 'easy responsiveness series'<sup>&#128526;</sup></p>
+</section>
+
+<section band="padded" C clr="0">
+    <item>
+        <p data-LEC="form1.font">form1 .font testing point-slope form</p>
+        <p data-LEC="form2.font">form2 .font testing y-intercept form</p>
+    </item>
+</section>
+
 <section band="rulers" C>
     <div class="rule-1"> 320px</div>
     <div class="rule-2">1280px</div>
-    <div class="rule-3">1920px</div>
-</section>
-
-<section band="padded.x2.hero" C>
-    <div data-LEC="font" data-font="hero"   >Linear Equations in CSS</div>
-    <p   data-LEC="font" data-font="subhero">creating responsive sizes</p>
-    <p   data-LEC="font" data-font="subline">part of 'easy responsiveness series' &trade;</p>
+    <div class="rule-3">1903px (1920 minus scrollbar)</div>
 </section>
 
 <section band="padded" C>
-    <p data-LEC="form1" data-font>testing point-slope form</p>
-    <p data-LEC="form2" data-font>testing y-intercept form</p>
+    <item>
+        <p data-LEC=".font.x1">.font .x1 (document base fontsize)<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
+        <p data-LEC=".font.x2">.font .x2<br>28px at vmin = &nbsp;320px<br>40px at vmin = 1280px</p>
+        <p data-LEC=".font.x3">.font .x3<br>42px at vmin = &nbsp;320px<br>60px at vmin = 1280px</p>
+    </item>
 </section>
 
 <section band="padded" C>
-    <p data-LEC="font.x1">font scale x1 (document base fontsize)<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
-    <p data-LEC="font.x2">font scale x2<br>28px at vmin = &nbsp;320px<br>40px at vmin = 1280px</p>
-    <p data-LEC="font.x3">font scale x3<br>42px at vmin = &nbsp;320px<br>60px at vmin = 1280px</p>
-</section>
-
-<section band="padded" C>
-    <p data-LEC="font" data-font="hero"   >HERO</p>
-    <p data-LEC="font" data-font="subline">testing HERO and subline</p>
+    <p data-LEC=".font" data-font="hero"   >HERO</p>
+    <p data-LEC=".font" data-font="subline">testing HERO and subline</p>
     <p>
         plain &lt;p&gt; for testing &lt;body&gt; font-size with 'hard-coded' linear equation: <em>calc(0.625vmin + 0.75rem)</em><br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
-    <p data-LEC="font" data-font="code">
+    <p data-LEC=".font" data-font="code">
         testing default 'code' font-size<br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
-    <p data-LEC="font.x2" data-font="code">
+    <p data-LEC=".font.x2" data-font="code">
         testing 'code' font-size at scale x2<br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
 </section>
 
-<section band="padded" C>
-    <div id="rect-test-01">
-        <p data-LEC="rect.PT.16:9">box 1<br>portrait rectangle<br>ratio 16:9</p>
-        <p data-LEC="rect.PT.16:9.min.max">box 2<br>portrait rectangle<br>ratio 16:9<br>clamp min.max</p>
+<section band="padded" C clr="1">
+    <p>
+        Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
+        Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
+    </p>
+    <p data-LEC=".font" data-font="code">
+        generic rule (all rect elements)&emsp;: <b>[data-rect*="test"]>* { --x1: 320; --y1: 75; --x2: 1920; --y2: 225 }</b><br>
+        inline rules (single rect element): <b>data-LEC=".rect.PT.ratio"</b> or <b>data-LEC=".wid.hgt.PT.ratio"</b> where '<b>.ratio</b>' is one of the predefined ratios.
+    </p>
+
+    <item class="rect-test">
+        <h3>ratios high:low (.rect .PT)</h3>
+        <div data-rect="test">
+            <div data-LEC=".rect.PT.1:1  "><span></span>1:1  </div>
+            <div data-LEC=".rect.PT.2:1  "><span></span>2:1  </div>
+            <div data-LEC=".rect.PT.3:2  "><span></span>3:2  </div>
+            <div data-LEC=".rect.PT.4:3  "><span></span>4:3  </div>
+            <div data-LEC=".rect.PT.gr:1 "><span></span>1.618:1</div>
+            <div data-LEC=".rect.PT.16:9 "><span></span>16:9 </div>
+            <div data-LEC=".rect.PT.17:10"><span></span>17:10</div>
+        </div>
+        <h3>ratios low:high (.wid .hgt .PT)</h3>
+        <div data-rect="test">
+            <div data-LEC=".wid.hgt.PT.1:1  "><span></span>1:1  </div>
+            <div data-LEC=".wid.hgt.PT.1:2  "><span></span>1:2  </div>
+            <div data-LEC=".wid.hgt.PT.2:3  "><span></span>2:3  </div>
+            <div data-LEC=".wid.hgt.PT.3:4  "><span></span>3:4  </div>
+            <div data-LEC=".wid.hgt.PT.1:gr "><span></span>1:1.618</div>
+            <div data-LEC=".wid.hgt.PT.9:16 "><span></span>9:16 </div>
+            <div data-LEC=".wid.hgt.PT.10:17"><span></span>10:17</div>
+        </div>
+        <h3>ratios high:low (.rect .LS)</h3>
+        <div data-rect="test">
+            <div data-LEC=".rect.LS.1:1  "><span></span>1:1  </div>
+            <div data-LEC=".rect.LS.2:1  "><span></span>2:1  </div>
+            <div data-LEC=".rect.LS.3:2  "><span></span>3:2  </div>
+            <div data-LEC=".rect.LS.4:3  "><span></span>4:3  </div>
+            <div data-LEC=".rect.LS.gr:1 "><span></span>1.618:1</div>
+            <div data-LEC=".rect.LS.16:9 "><span></span>16:9 </div>
+            <div data-LEC=".rect.LS.17:10"><span></span>17:10</div>
+        </div>
+        <h3>ratios low:high (.wid .hgt .LS)</h3>
+        <div data-rect="test">
+            <div data-LEC=".wid.hgt.LS.1:1  "><span></span>1:1  </div>
+            <div data-LEC=".wid.hgt.LS.1:2  "><span></span>1:2  </div>
+            <div data-LEC=".wid.hgt.LS.2:3  "><span></span>2:3  </div>
+            <div data-LEC=".wid.hgt.LS.3:4  "><span></span>3:4  </div>
+            <div data-LEC=".wid.hgt.LS.1:gr "><span></span>1:1.618</div>
+            <div data-LEC=".wid.hgt.LS.9:16 "><span></span>9:16 </div>
+            <div data-LEC=".wid.hgt.LS.10:17"><span></span>10:17</div>
+        </div>
+    </item>
+</section>
+
+<section band="padded.x2.cardlist" clr="0" no-select>
+    <div class="card-outer" data-LEC=".rect.PT">
+        <div class="card-inner">
+            <p>The default card ratio is 1:1.<br><br>
+               Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
+               Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
+            </p>
+        </div>
     </div>
-    <div id="rect-test-02">
-        <p data-LEC="rect.LS.16:9">box 3<br>landscape rectangle<br>ratio 16:9</p>
-        <p data-LEC="rect.LS.16:9.min.max">box 4<br>landscape rectangle<br>ratio 16:9<br>clamp min.max</p>
+    <div class="card-outer" data-LEC=".rect.PT">
+        <div class="card-inner">
+            <p>In this demo ratio it is 16:10<br><br>
+               Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
+               Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
+            </p>
+        </div>
+    </div>
+    <div class="card-outer" data-LEC=".rect.PT">
+        <div class="card-inner">
+            <p>(--ratio: 1.6), which is not<br><br>
+               Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
+               Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
+            </p>
+        </div>
+    </div>
+    <div class="card-outer" data-LEC=".rect.PT">
+        <div class="card-inner">
+            <p>one of the predefined ratios.<br><br>
+               Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
+               Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
+            </p>
+        </div>
     </div>
 </section>
+
+<script>
+'use-strict';
+
+//Shortcuts to HTML elements references, by ID or by various selectors.
+//Param: selector string
+var ALL = function (s) { return document.querySelectorAll(s); };
+var CLS = function (s) { return document.getElementsByClassName(s); };
+var ID  = function (s) { return document.getElementById(s); };
+var SEL = function (s) { return document.querySelector(s); };
+var TAG = function (s) { return document.getElementsByTagName(s); };
+
+//Shortcuts to <html>, <body> and <head> elements
+var html = document.documentElement;
+var body = document.body;
+var head = document.head;
+
+/************************************/
+//Returns a values rounded up to a given number of decimals.
+//Params: float [, required # of decimals, default = 3]
+var clampDec = function (value,dec) {
+if (dec==null) dec=3; dec = Math.abs(dec);
+return (dec>0) ? Math.ceil(value * Math.pow(10,dec)) / Math.pow(10,dec) : value;
+};
+//Rounded down
+var clampDecLow = function (value,dec) {
+if (dec==null) dec=3; dec = Math.abs(dec);
+return (dec>0) ? Math.floor(value * Math.pow(10,dec)) / Math.pow(10,dec) : value;
+};
+
+/****************************************************/
+//Traverse an array and execute the passed callback function for each array element found
+var forEachEntryIn = function (array, callback, scope) {
+ for (var i = 0; i < array.length; i++) { callback.call(scope, i, array[i]); } };
+
+
+</script>
+
+<script>
+/*
+    MDN: CSS values and units
+         https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Values_and_Units
+
+    Relative length units
+    Unit    Relative to
+    em      Font size of the element.
+    ex      x-height of the element's font.
+    cap     Cap height (the nominal height of capital letters) of the element's font.
+    ch      Average character advance of a narrow glyph in the element’s font, as represented by the “0” (ZERO, U+0030) glyph.
+    ic      Average character advance of a full width glyph in the element’s font as represented CJK water ideograph (U+6C34) glyph.
+    rem     Font size of the root element.
+    lh      Line height of the element.
+    rlh     Line height of the root element.
+    vw      1% of viewport's width.
+    vh      1% of viewport's height.
+    vi      1% of viewport's size in the root element's inline axis.
+    vb      1% of viewport's size in the root element's block axis.
+    vmin    1% of viewport's smaller dimension.
+    vmax    1% of viewport's larger dimension.
+
+    Absolute length units
+    Unit    Name                Equivalent to
+    cm      Centimeters         1cm = 96px/2.54
+    mm      Millimeters         1mm = 1/10th of 1cm
+    Q       Quarter-millimeters 1Q  = 1/40th of 1cm
+    in      Inches              1in = 2.54cm = 96px
+    pc      Picas               1pc = 1/16th of 1in
+    pt      Points              1pt = 1/72th of 1in
+    px      Pixels              1px = 1/96th of 1in
+
+    Angle units
+    Unit    Name                Description
+    deg     Degrees             There are 360 degrees in a full circle.
+    grad    Gradians            There are 400 gradians in a full circle.
+    rad     Radians             There are 2π radians in a full circle.
+    turn    Turns               There is 1 turn in a full circle.
+
+    Time units
+    Unit    Name                Description
+    s       Seconds     
+    ms      Milliseconds        There are 1,000 milliseconds in a second.
+
+    Frequency units
+    Unit    Name                Description
+    Hz      Hertz               Represents the number of occurrences per second.
+    kHz     KiloHertz           A kiloHertz is 1000 Hertz.
+
+    Resolution unit
+    Unit                        Description
+    dpi                         Dots per inch.
+    dpcm                        Dots per centimetre.
+    dppx, x                     Dots per px unit.
+
+    Ehmm...maybe...you...do the math...?
+*/
+</script>
 </body>
 </html>
 
