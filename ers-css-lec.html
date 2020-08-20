@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;500;600;700&display=swap"> 
 <!-- -->
 
-<style id="stl-linear-equations-default">
+<style id="stl-linear-equations-definition-default">
 /******************/
 /* VERY, VERY WIP */
 /******************/
@@ -32,7 +32,7 @@
               Most commonly used, long, but only requires points (x1,y1)(x2,y2), CPU intensive.
 
     'form2' - y-intercept form: y = mx + b
-              fully substituted: y = (y2 - y1) / (x2 - x1) * x + (y1 - (y2 - y1) / (x2 - x1) * x1))
+              fully substituted: y = (y2 - y1) / (x2 - x1) * x + (y1 - (y2 - y1) / (x2 - x1) * x1)
               Short, but requires manual calculation of m and b, least CPU intensive.
 
               Before calculating either equation manually, you might want to have a look at
@@ -74,9 +74,17 @@
     --ratio  = height or width ratio, e.g. 16:9 = 1.77778, 9:16 = 0.5625, 17:10 = 1.7, etc.
     --sign   = to get a positive or negative end result (think margin, padding, top, left, etc.)
 */
-
+/*
+    TODO: 'form3' for compound equations like used in 'stl-widget-ribbon-custom-variables'
+          .fork.tr45deg {...}
+          
+          Long term plan...
+*/
 [data-LEC] {
-    /* ALL custom properties are locally scoped to custom attribute [data-LEC] */
+    /*
+        ALL custom properties are locally scoped to custom attribute [data-LEC]
+        unless specifically mentioned otherwise.
+    */
 
     --y: 0; /* equation result */
 
@@ -86,33 +94,43 @@
     */
     --x: var(--vx, var(--vw, var(--vh, var(--vm, 100vmin)))); /* either/or */
     /*
-        Works: any assigned value to vx,vw,vh or vm will compute and override default 100vmin.
-        However, we might just as well assign 100vw (etc.) to --x directly when required.
+        Works, any assigned value to vx,vw,vh or vm computes and overrides default 100vmin.
+        However, as LEC always uses a value of 100x we might just as well assign 100vw (etc.)
+        directly to --x when required.
 
         To simply initialize, change to: --x: 100vmin;
     */
 
     /* 
-        Initialize with default values:
+        Initialize points with default values (here: base document responsive fontsize):
          => y = mx + b for points (320,14)(1280,20) => y = 0.00625x + 12
     */
-    /* Variables to hold two point(x,y) values (equation 'form1')  */
+    /* Variables to hold two point(x,y) values for equation 'form1' */
     --x1:  320; --y1: 14;   /* point p1 => 14px at  320px min vp (pixels, but without unit) */
     --x2: 1280; --y2: 20;   /* point p2 => 20px at 1280px max vp (ditto) */
 
-    /* Variables to hold values (equation 'form2') */
+    /* Variables to hold intermediate values for equation 'form2' */
     --m: 0.00625;           /* 1/160th (decimal) */
     --b: 12;                /* size at x = 0 (pixels, but without unit) */
 
-    /* Variables for unit conversion (set to your own default as required) */
+    /*
+        Variables for unit conversion (set to your own default as required).
+        Part of the main equations for 'form1' and 'form2'.
+    */
     --unit  : 1rem;         /* preferred default unit to use in the equation     */
     --factor: 0.0625;       /* 1/16 as by default REM is used in the equation    */
                             /* change to '1px' and '1' if you want to use pixels */
 
-    --scale: 1;             /* to scale resulting y */
-    --ratio: 1;             /* to multiply y with a ratio (esp. useful with heights and widths) */
-    --sign : 1;             /* set to -1 to negate LEC result, default 1 = positive */
-                            /* useful when going beyond an elements' top,right,bottom,left: 0 */
+    /* 
+        Variables specific to certain use cases.
+        NOT part of the main equations for 'form1' and 'form2'.
+        
+        e.g. fonts can be scaled, but have no ratio (like oblong elements)
+             or a negative sign (like margin, padding, top, right, bottom, left).
+    */
+    --scale: 1; /* to scale resulting y */
+    --ratio: 1; /* to multiply y with a ratio (esp. useful with heights and widths) */
+    --sign : 1; /* set to -1 to negate LEC result, default is 1 (= positive) */
 }
 
 /*******************************************/
@@ -131,10 +149,10 @@
 [data-LEC*=".pos"]      { --sign:  1 } /* default */
 [data-LEC*=".neg"]      { --sign: -1 }
 
-[data-LEC*=".vm"],[vm]  { --x: 100vmin } /* default */
-[data-LEC*=".vh"],[vh]  { --x: 100vh   }
-[data-LEC*=".vw"],[vw]  { --x: 100vw   }
-[data-LEC*=".vx"],[vx]  { --x: 100vmax }
+[data-LEC*=".vm"]       { --x: 100vmin } /* default */
+[data-LEC*=".vh"]       { --x: 100vh   }
+[data-LEC*=".vw"]       { --x: 100vw   }
+[data-LEC*=".vx"]       { --x: 100vmax }
 
 /* A few common ratios (5 significant decimals are more than enough) */
 [data-LEC*=".1:1"  ]    { --ratio: 1       } /* default */
@@ -157,18 +175,24 @@
 [data-LEC*=".x2"]       { --scale: 2   }
 [data-LEC*=".x3"]       { --scale: 3   }
 
-/* WIP */
-[data-LEC*=".clp"], /* clip */
-[data-LEC*=".min"],
-[data-LEC*=".max"]      { overflow: hidden }
-
+/* WIP clipping to prevent min/max overflowing */
+[data-LEC*=".clp"]      { overflow: hidden }
 
 /*****************/
 /* THE EQUATIONS */
 /*****************/
 [data-LEC] {
-    --cv-unit: calc(var(--unit) * var(--factor)); /* shortcut to unit conversion */
-    --cv-all : calc(var(--cv-unit) * var(--scale) * var(--sign));/* shortcut to all multipliers */
+    /*
+        A few shortcut calculations to improve code readability below.
+
+        --cv-unit: unit multiplication factor with proper CSS unit attached
+        --cv-full : --cv-unit (optionally) scaled and negated
+
+        Without --ratio, ratio is specific to oblong elements
+                --sign, sign is specific to padding, margin and positioning
+    */
+    --cv-unit: calc(var(--unit) * var(--factor));
+    --cv-full: calc(var(--cv-unit) * var(--scale));
 }
 [data-LEC],           /* default form for all uses */
 [data-LEC^="form1"] { /* generic 'form1' */
@@ -177,59 +201,101 @@
         To enable clamping y to a min/max value (like you would do in a @media query)
         a 2 variable workaround is required as explained at '[data-LEC*="clamp"]'.
 
-        IMPORTANT: Do not use/modify '--y-int-clamp' directly,
+        IMPORTANT: Do not use/modify '--y-int-unclamped' directly,
                    just treat it as some internal variable.
     */
-    --y-int-clamp: calc(
-                         (var(--y1) * var(--cv-unit) + 
-                         (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) *
-                         (var(--x ) - var(--x1) * 1px)) *
-                         var(--scale) * var(--sign)
-                       );
+    /*
+        y1 must have a unit, otherwise the calc() will fail.
+        Here we use the converted unit factor, which will have a proper CSS unit attached
+        (really!).
 
-    --y: var(--y-int-clamp);
+        and, as viewport size units return pixels, we need convert the result of
+        (x - x1) to pixels (* 1px), otherwise the calc() will fail also.
+    */
+    --y-int-unclamped: calc( (var(--y1) * var(--cv-unit) + 
+                             (var(--y2) - var(--y1)) / (var(--x2) - var(--x1)) *
+                             (var(--x)  - var(--x1) * 1px)) *
+                              var(--scale)
+                           );
+
+    --y: var(--y-int-unclamped); /* See NOTE 2 below */
 }
 [data-LEC^="form2"] { /* generic 'form2' */
     /*
         'form2' calculates a size using variables m,x and b only.
         To be able to clamp y to a min/max value, here too the 2 variable workaround is required.
 
-        NOTE: make sure when you clamp 'form2' that y1 and y2 have the required min/max values
-              (otherwise the current (default) values of y1 and y2 will be used).
+        BEWARE: make sure when you clamp 'form2' that y1 and y2 have the required min/max values
+                (otherwise the current (default) values of y1 and y2 will be used).
     */
-    --y-int-clamp: calc(
-                         (var(--m) * var(--x) + var(--b) *
-                          var(--cv-unit)) * var(--scale) * var(--sign)
-                       );
+    --y-int-unclamped: calc( var(--m) * var(--x) + var(--b) * var(--cv-unit) *
+                             var(--scale)
+                           );
 
-    --y: var(--y-int-clamp);
+    --y: var(--y-int-unclamped); /* See NOTE 2 below */
 }
 /*
-    min/max clamping, two variable workaround
+    NOTE 2: min/max clamping, two variable workaround
 
     A temporary variable is needed to enable clamping of y to min.max vp size,
     because code like the following (pseudo) CSS will not work:
 
     [LEC]           { --y: calc(...LEC...) }
-    [LEC*='clamp']  { --y: clamp(calc(--y1), var(--y), calc(--y2) ) }
+    [LEC*='clamp']  { --y: clamp(var(--y1), var(--y), var(--y2) ) }
 
     The result of var(--y) in '[LEC*='clamp']' will
     evaluates to 'clamp(calc(--y1), var(--y), calc(--y2))'
     instead of   'calc(...LEC...)', like it would in Javascript: y = clamp(y1,y,y2)
 
-    Hence: y = clamp(calc(--y1), --y-int-clamp, calc(--y2))
+    Hence: y = clamp(var(--y1), var(--y-int-unclamped), var(--y2))
 */
 
-/* Clamp y between y1 and y2 using CSS min(),max() */
-[data-LEC*=".clamp"] {
+/********************************/
+/* USAGE OF THE EQUATION RESULT */
+/********************************/
 /*
-    Syntax: data-LEC = ".clamp"  to constraint y between y1 and y2
+    Element size parameters (Only one allowed)
+    -----------------------
+
+    .FS: y = font-size
+    .CW: y = column-width
+    .H : y = height
+    .W : y = width
+
+
+    Onblong element parameters (Only one allowed)
+    --------------------------
+    
+    .PT: when ratio <> 1 then portrait mode  
+    .LS: when ratio <> 1 then landscape mode
+
+    Still TODO, choose: .PT initially in browser portrait mode or in landscape mode???
+                        (think of 'card' layouts, prefer .PT in landscape mode...) 
+    .IN: when ratio <> 1 then invert .PT/.LS on @media 'orientation' change
+
+
+    Size constraint parameters (One, both or none allowed)
+    --------------------------
+
+    .min = force y >= y1
+    .max = force y <= y2
+    
+    When used with .H and/or .W these parameters will set the elements' min-/max-width and/or
+    min-/max-height depending on .PT/.LS and .IN  
+
 */
-    --y: max( calc(var(--y1) * var(--cv-unit) * var(--scale) * var(--sign)),
-                   min(var(--y-int-clamp),
-                       calc(var(--y2) * var(--cv-unit) * var(--scale) * var(--sign)))
-            );
+
+/******************************/
+/* FONTSIZES and COLUMN-WIDTH */
+/******************************/
+[data-LEC*=".FS"],[data-LEC*=".CW"] { font-size: var(--y) } /* ignoring --ratio and --sign */
+
+/* Clamp using CSS min(),max() */
+[data-LEC*=".FS"][data-LEC*=".min"][data-LEC*=".max"],
+[data-LEC*=".CW"][data-LEC*=".min"][data-LEC*=".max"] {
+    --y: max( calc(var(--y1) * var(--cv-full)), min( var(--y-int-unclamped), calc(var(--y2) * var(--cv-full)) ) );
 }
+
 /*
     Preferred clamping of y uses CSS 'clamp(min, value, max)'
     which is one CSS func() call less than using min()/max(),
@@ -238,96 +304,83 @@
     However, below rule tested to work in Chrome, Edge and Firefox
 */
 
-/* Clamp y between y1 and y2 using CSS clamp() *//*
-[data-LEC*=".clamp"] {
-    --y: clamp( calc(var(--y1) * var(--cv-unit) * var(--scale) * var(--sign)),
-                var(--y-int-clamp),
-                calc(var(--y2) * var(--cv-unit) * var(--scale) * var(--sign))
-              );
+/* Clamp using CSS clamp() *//*
+[data-LEC*=".FS" ][data-LEC*=".clamp"],
+[data-LEC*=".CW"][data-LEC*=".clamp"] {
+    --y: clamp( calc(var(--y1) * var(--cv-full)), var(--y-int-unclamped), calc(var(--y2) * var(--cv-full)) );
 }/**/
 
 /*
     To clamp either minimum or maximum value use one of the below rules.
     Using both '.min' and '.max' will revert back to the rule above!
-    
-    Syntax: either data-LEC=".clamp.min" to constraint y to y1
-            or     data-LEC=".clamp.max" to constraint y to y2
 */
-[data-LEC*=".clamp"]:not([data-LEC*=".max"])[data-LEC*=".min"] {
-    --y: max(calc(var(--y1) * var(--cv-unit) * var(--scale) * var(--sign)),
-                  var(--y-int-clamp));
+[data-LEC*=".FS"]:not([data-LEC*=".max"])[data-LEC*=".min"],
+[data-LEC*=".CW"]:not([data-LEC*=".max"])[data-LEC*=".min"] {
+    --y: max( calc(var(--y1) * var(--cv-full)), var(--y-int-unclamped) );
 }
-[data-LEC*=".clamp"]:not([data-LEC*=".min"])[data-LEC*=".max"] {
-    --y: min(calc(var(--y2) * var(--cv-unit) * var(--scale) * var(--sign)),
-                   var(--y-int-clamp));
+[data-LEC*=".FS"]:not([data-LEC*=".max"])[data-LEC*=".min"],
+[data-LEC*=".CW"]:not([data-LEC*=".min"])[data-LEC*=".max"] {
+    --y: min( calc(var(--y2) * var(--cv-full)), var(--y-int-unclamped) );
 }
 /*
     TODO: add possibility to use other min/max variables than only y1 and y2
           [data-LEC*="altclamp"] { ... } ??
 */
 
-/********************************/
-/* USAGE OF THE EQUATION RESULT */
-/********************************/
-
-/*************/
-/* FONTSIZES */
-/*************/
-[data-LEC*=".font"] { font-size: var(--y) }
-
-/***********************/
-/* WIDTH and/or HEIGHT */
-/***********************/
-/* Calculate height and width of the rectangle depending on its orientation (PT = Portrait or LS = Landscape) */
-[data-LEC*=".rect"][data-LEC*=".PT"] { height: calc(var(--y) * var(--ratio)); width : var(--y) }
-[data-LEC*=".rect"][data-LEC*=".LS"] { width : calc(var(--y) * var(--ratio)); height: var(--y) }
-
-[data-LEC*=".wid"][data-LEC*=".PT"] { width : var(--y) }
-[data-LEC*=".hgt"][data-LEC*=".PT"] { height: calc(var(--y) * var(--ratio)) }
-[data-LEC*=".wid"][data-LEC*=".LS"] { width : calc(var(--y) * var(--ratio)) }
-[data-LEC*=".hgt"][data-LEC*=".LS"] { height: var(--y) }
+/*******************************/
+/* element WIDTH and/or HEIGHT */
+/*******************************/
+/*
+    Calculate height and width of an element depending on its orientation (PT = Portrait or LS = Landscape)
+    All ignore --sign, as no negative widths or heights are allowed.
+*/
+[data-LEC*=".W"][data-LEC*=".PT"] { width : var(--y) }
+[data-LEC*=".H"][data-LEC*=".PT"] { height: calc(var(--y) * var(--ratio)) }
+[data-LEC*=".W"][data-LEC*=".LS"] { width : calc(var(--y) * var(--ratio)) }
+[data-LEC*=".H"][data-LEC*=".LS"] { height: var(--y) }
 
 /*
-    Add Media Queries for each min/max viewport size you have used for x1 and x2 values you used in
-    your equations when you need to contstraint the results to the min/max y1 and y2 values.
-
     As --y1 and --y2 are being used for [.min][.max] instead of --y we need
-    to put --unit, --factor and --scale into the equations below again. 
+    to put --unit, --factor and --scale into the below equations again. 
 
-    And to prevent repeting code like:
+    To prevent repeting code like:
 
         var(--y) * var(--unit) * var(--factor) * var(--scale)
         var(--y) * var(--unit) * var(--factor) * var(--scale) * var(--ratio)
 
-    we create temporary variables (below) instead to create the
-    multiplication factor used in the equations. 
+    we create temporary variables instead to create the multiplication factor used in the equations. 
 */
-[data-LEC*=".rect"] {
+[data-LEC*=".W"],[data-LEC*=".H"] {
     /* Considered to be 'internal variables', do not assign values directly */
-    --int-rect1: calc(var(--cv-unit) * var(--scale)); 
-    --int-rect2: calc(var(--cv-unit) * var(--scale) * var(--ratio)); 
+    --int-rect1: var(--cv-full); 
+    --int-rect2: calc(var(--cv-full) * var(--ratio)); 
 }
 /*
-    Instead of a series of Media Queries to constraint all kind of rectangles to their
-    minimum and maximum values, we use a [.min] and/or [.max] parameter in the 
-    [use-LEC] equation property instead. This way we can decide to use the min/max
-    constraint on a 'per rectangle' basis.
+    Instead of a series of Media Queries to constraint all kind of oblong elements to their
+    minimum and maximum values, we use the [.min] and/or [.max] parameters in LEC instead.
+    This way we can decide per element to use either min/max constraint or not.
 */
-/* Constraints for a rectangle at minimum viewport size */
-[data-LEC*=".rect"][data-LEC*=".PT"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--int-rect1)); min-height: calc(var(--y1) * var(--int-rect2)) }
-[data-LEC*=".rect"][data-LEC*=".LS"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--int-rect2)); min-height: calc(var(--y1) * var(--int-rect1)) }
-/* Constraints for a rectangle at maximum viewport size */
-[data-LEC*=".rect"][data-LEC*=".PT"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--int-rect1)); max-height: calc(var(--y2) * var(--int-rect2)) }
-[data-LEC*=".rect"][data-LEC*=".LS"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--int-rect2)); max-height: calc(var(--y2) * var(--int-rect1)) }
+/* Constraints for width and height at minimum viewport size */
+[data-LEC*=".W"][data-LEC*=".PT"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--int-rect1)) }
+[data-LEC*=".W"][data-LEC*=".LS"][data-LEC*=".min"] { min-width : calc(var(--y1) * var(--int-rect2)) }
+[data-LEC*=".H"][data-LEC*=".PT"][data-LEC*=".min"] { min-height: calc(var(--y1) * var(--int-rect2)) }
+[data-LEC*=".H"][data-LEC*=".LS"][data-LEC*=".min"] { min-height: calc(var(--y1) * var(--int-rect1)) }
+
+/* Constraints for width and height at maximum viewport size */
+[data-LEC*=".W"][data-LEC*=".PT"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--int-rect1)) }
+[data-LEC*=".W"][data-LEC*=".LS"][data-LEC*=".max"] { max-width : calc(var(--y2) * var(--int-rect2)) }
+[data-LEC*=".H"][data-LEC*=".PT"][data-LEC*=".max"] { max-height: calc(var(--y2) * var(--int-rect2)) }
+[data-LEC*=".H"][data-LEC*=".LS"][data-LEC*=".max"] { max-height: calc(var(--y2) * var(--int-rect1)) }
+
 
 @media (max-width: 320px) {
     [data-LEC^="padLR"] {
-        padding-left : calc(var(--y1) * var(--cv-unit) * var(--scale));
-        padding-right: calc(var(--y1) * var(--cv-unit) * var(--scale))
+        padding-left : calc(var(--y1) * var(--cv-full) * var(--sign));
+        padding-right: calc(var(--y1) * var(--cv-full) * var(--sign))
      }
     [data-LEC^="padTB"] {
-        padding-top   : calc(var(--y1) * var(--cv-unit) * var(--scale));
-        padding-bottom: calc(var(--y1) * var(--cv-unit) * var(--scale))
+        padding-top   : calc(var(--y1) * var(--cv-full) * var(--sign));
+        padding-bottom: calc(var(--y1) * var(--cv-full) * var(--sign))
      }
     /* 
         Add selectors for sizes  at min vp like padding, margin, etc. using 'custom variables'
@@ -357,10 +410,14 @@
 [data-font^="code"]     { --y1:  8; --y2: 20 }
 
 /* LEC demo RECTANGLE/WIDTH/HEIGHT rules */
-[data-rect*="test"]>*   { --x1: 320; --y1: 75; --x2: 1920; --y2: 225 }
+[data-rect*="test"]>*   {
+    --x1: 320; --y1: 75; --x2: 1920; --y2: 225; /* points */
+    --x: 100vw;   /* making them viewport width dependent */
+}
 
 /* demo cards */
-.card-outer {
+/*.card-outer,*/
+[data-rect*="cardlist"]>* {
 /*
     parent width (at 320px and 1920px)
     minus scrollbar width (17px)
@@ -372,10 +429,9 @@
 
     LEC with points p1(320,143.5) and p2(1920,315.75)
 */
-    --x1: 320; --y1: 143.5; --x2: 1920; --y2: 315.75;
-    --x: 100vw; /* because viewport width depended */
-    
-    --ratio: 1.6; /* some not predefined ratio */
+    --x1: 320; --y1: 143.5; --x2: 1920; --y2: 315.75; /* points */
+    --x: 100vw;   /* because cards are viewport width dependent */
+    --ratio: 1.67; /* some not predefined ratio */
 }
 </style>
 
@@ -416,12 +472,18 @@
     width    : calc(5vmin     + 10.25rem); /* (320,180)(1920,260) */
     height   : calc(0.5vmin   +  1.4rem) ; /* (320, 24)(1920, 32) */
     font-size: calc(0.625vmin +  0.5rem) ; /* (320, 10)(1280, 16) */
+    /* 
+        officially: y = calc(m * 100vmin + b),
+        but m values are *100 to remove * 100vmin from equation
+
+        Also: to make results root independent, multiply REM values with 16 and add PX unit
+    */
 }
 .fork a { border-width: 2px 0 }
 
 .fork.tr45deg {
     /* ribbon scale  = 1.1      */
-    /* sqrt(2)       = 1.4142…  */
+    /* sqrt(2)       = 1.41421… */
     /* (180-45deg)/2 = 67.5     */
     /* cos(67.5)^2   = 0.38268343^2 = 0.1464466, to move element right */
     /* to go above top and beyond right margins: multiply with -1 to negate final result */
@@ -437,8 +499,8 @@
     /* (discussed and verified on 'MathIsFun Forum': http://www.mathisfunforum.com/viewtopic.php?id=25620) */
     /* This works like a charm, so cool! (Thanks a bunch, Bob) */
 
-    top  : calc((0.5vmin + 1.4rem) / 1.4142 * 1.1 * -1);
-    right: calc((((0.5vmin + 1.4rem) / 1.4142) + (2 * (5vmin + 10.25rem) * 0.1464466)) * 1.1 * -1);
+    top  : calc(  (0.5vmin + 1.4rem) / 1.41421 * 1.1 * -1 );
+    right: calc((((0.5vmin + 1.4rem) / 1.41421) + (2 * (5vmin + 10.25rem) * 0.1464466)) * 1.1 * -1);
 }
 </style>
 <style id="stl-widget-ribbon-custom-variables">
@@ -446,20 +508,21 @@
 /* fork ribbon with custom variables */
 /*************************************/
 .fork {
-    /* for all others, variable scales */
+    --fork-bd : 2px; /* border width */
+
+    /* variable scaling */
     --fork-scale     : 1.1; /* set these to your desired scales */
     --fork-scale-text: 1;
-    --fork-bd        : 2px;                 /* border width */
 
-    --fork-wm: 5    ; --fork-wb: 10.25rem;  /* m and b variables to calculate y, ribbon width */
-    --fork-hm: 0.5  ; --fork-hb: 1.4rem;    /* ditto for height and font-size */
-    --fork-fm: 0.625; --fork-fb: 0.5rem;
+    --fork-wm: 0.05   ; --fork-wb: 10.25rem;  /* m and b variables to calculate y, ribbon width */
+    --fork-hm: 0.005  ; --fork-hb: 1.4rem;    /* ditto for height */
+    --fork-fm: 0.00625; --fork-fb: 0.5rem;    /* ditto for font-size */
 
     /* do not modify */
-    --fork-x: 1vmin;                        /* x is always 1vmin */
-    --sqrt-2: 1.4142;                       /* Math.sqrt(2) ~ 1.4142135... */
-    --cos2   : 0.1464466;                   /* cos(67.5) => 67.5 = (180deg - 45deg) / 2 => cos^2 = 0.1464466 */
-                                            /* Used to move rotated ribbon up and right */
+    --fork-x: 100vmin;      /* x is always 100vmin */
+    --sqrt-2: 1.41421;      /* sqrt(2) ~ 1.4142135... */
+    --cos2   : 0.1464466;   /* cos(67.5) where 67.5 = (180deg - 45deg) / 2, need cos(67.5)^2 = 0.1464466 */
+                            /* Used to move rotated ribbon up and right */
 }
 .fork a { border-width: var(--fork-bd) 0 }
 
@@ -469,13 +532,18 @@
     font-size: calc((var(--fork-fm) * var(--fork-x) + var(--fork-fb)) * var(--fork-scale-text)); /* (320, 10)(1280, 16) */
 }
 .fork.tr45deg {
-    /*       cos = cos(67.5) */
-    /*         r = (wm * x + wb)                    /* width  of rectangle */
-    /* distance2 = (hm * x + hb) / sqrt2            /* height of rectangle */
-    /* distance3 = 2 * r * cos(67.5) * cos(67.5) */
-    /* top   = (hm * x + hb) / sqrt2 * scale * -1   /* move above top border */
-    /* right = (((hm * x + hb) / sqrt2) + (2 * (wm * x + wb) * cos * cos)) * scale * -1 /* move beyond right border */
+    /*
+        cos   = cos((180 - 45)/2)
+        w = r = (wm * x + wb)
+        h     = (hm * x + hb) / sqrt2
+        shift = 2 * r * cos(67.5)^2
 
+        move above top border
+        top   = (hm * x + hb) / sqrt2 * scale * -1
+
+        move beyond right border
+        right = (((hm * x + hb) / sqrt2) + (2 * (wm * x + wb) * cos * cos)) * scale * -1
+    */
     top  : calc(  (var(--fork-hm) * var(--fork-x) + var(--fork-hb)) / var(--sqrt-2) * var(--fork-scale) * -1);
     right: calc((((var(--fork-hm) * var(--fork-x) + var(--fork-hb)) / var(--sqrt-2)) + (2 * (var(--fork-wm) * var(--fork-x) + var(--fork-wb)) * var(--cos2))) * var(--fork-scale) * -1);
 }
@@ -506,7 +574,7 @@
 /*****************************************/
 [ribbon*="1"] { --fork-wb:  2.25rem; background-color: Yellow; color: black; } /* ribbon 1: calc(5vmin +  2.25rem) (320, 52)(1920,132) */
 [ribbon*="2"] { --fork-wb:  6.25rem; background-color: Tomato; color: black; } /* ribbon 2: calc(5vmin +  6.25rem) (320,116)(1920,196) */
-[ribbon*="3"] { --fork-wb: 10.25rem; background-color: Black; }                /* ribbon 3: calc(5vmin + 10.25rem) (320,180)(1920,260) */
+[ribbon*="3"] { --fork-wb: 10.25rem; background-color: rgba(0,0,0,.8); }         /* ribbon 3: calc(5vmin + 10.25rem) (320,180)(1920,260) */
 [ribbon*="4"] { --fork-wb: 14.25rem; background-color: DarkSlateGrey; }        /* ribbon 4: calc(5vmin + 14.25rem) (320,244)(1920,324) */
 [ribbon*="5"] { --fork-wb: 18.25rem; background-color: DarkSlateBlue; }        /* ribbon 5: calc(5vmin + 18.25rem) (320,308)(1920,388) */
 </style>
@@ -624,17 +692,22 @@ p {
 /*
     responsive page padding
     and responsive band padding (same as responsive page padding, but at band level)
-    p1(320,32) p2(1920, 72) => 0.25x + 24
+    p1(320,32) p2(1920, 72) => 0.025x + 24
     p3(320, 8) p4(1920,320) => 0.195x - 54.4 
 
-    'Band padding' is only active when 'page padding' is off 
+    'Band padding' is only active when 'page padding' is off
+
 */
-[padded="1"],[simple-band],
+/*    WIP newTB: calc(4vmin + 37.2px); /* (320,50)(1920,114) */
+/*        newLR: calc(68.75vmin - 200px); /* (320,20)(1920,1120) */
+
+[padded="1"],
+[simple-band],
 [padded="0"] [band*="padded"]   { padding: calc( 2.5vh + 1.5rem)    calc(19.5vw - 3.4rem) }
 [padded="0"] [band*=".x0"]      { padding: calc((2.5vh + 1.5rem)/2) calc(19.5vw - 3.4rem) }
 [padded="0"] [band*=".x2"]      { padding: calc((2.5vh + 1.5rem)*2) calc(19.5vw - 3.4rem) }
 
-[padded="1"] [band*="padded"]   { padding: 0 } /* already padded, no use to pad some more */
+[padded="1"] [band*="padded"]   { padding: calc( 2.5vh + 1.5rem) 0 }
 
 [push*="C"] { margin: 0 auto      } /* center element */
 [push*="R"] { margin-left  : auto } /* push elements Right/Left/Top/Bottom */
@@ -789,8 +862,6 @@ hr                  { border: 1px solid rgba(47, 79, 79,.1); border-top: none }
 [data-rect*="test"]>*>span::before { content: counter(boxno) }
 </style>
 <style id="stl-page-specific-cards">
-[band*=".cardlist"] { justify-content: center; flex-grow: 1 }
-
 .card-outer {
     /* width/height defined with LEC */
     font-size: calc(0.625vw + 6px);     /* (320,8)(1920,18) at 320 => 143/3.15 ~ 45% of fs at 1920 */
@@ -832,15 +903,15 @@ hr                  { border: 1px solid rgba(47, 79, 79,.1); border-top: none }
 <div class="fork tr45deg" ribbon="5"><a target="_blank" href="https://github.com/renevanderlende/ers-css-lec" data-ribbon="LEC at Github"></a></div>
 
 <section band="padded.x2.hero" C clr="3">
-    <p data-LEC=".font.clamp.min.max" data-font="hero"   >linear equations in CSS</p>
-    <p data-LEC=".font"       data-font="subhero">creating responsive sizes</p>
-    <p data-LEC=".font"       data-font="subline">part of 'easy responsiveness series'<sup>&#128526;</sup></p>
+    <p data-font="hero"    data-LEC=".FS.min.max">linear equations in CSS</p>
+    <p data-font="subhero" data-LEC=".FS">creating responsive sizes</p>
+    <p data-font="subline" data-LEC=".FS">part of 'easy responsiveness series'<sup>&#128526;</sup></p>
 </section>
 
 <section band="padded" C clr="0">
     <item>
-        <p data-LEC="form1.font">form1 .font testing point-slope form</p>
-        <p data-LEC="form2.font">form2 .font testing y-intercept form</p>
+        <p data-LEC="form1.FS">form1 .FS testing point-slope form</p>
+        <p data-LEC="form2.FS">form2 .FS testing y-intercept form</p>
     </item>
 </section>
 
@@ -852,26 +923,26 @@ hr                  { border: 1px solid rgba(47, 79, 79,.1); border-top: none }
 
 <section band="padded" C>
     <item>
-        <p data-LEC=".font.x1">.font .x1 (document base fontsize)<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
-        <p data-LEC=".font.x2">.font .x2<br>28px at vmin = &nbsp;320px<br>40px at vmin = 1280px</p>
-        <p data-LEC=".font.x3">.font .x3<br>42px at vmin = &nbsp;320px<br>60px at vmin = 1280px</p>
+        <p data-LEC=".FS.x1">.FS .x1 (document base fontsize)<br>14px at vmin = &nbsp;320px<br>20px at vmin = 1280px</p>
+        <p data-LEC=".FS.x2">.FS .x2<br>28px at vmin = &nbsp;320px<br>40px at vmin = 1280px</p>
+        <p data-LEC=".FS.x3">.FS .x3<br>42px at vmin = &nbsp;320px<br>60px at vmin = 1280px</p>
     </item>
 </section>
 
 <section band="padded" C>
-    <p data-LEC=".font" data-font="hero"   >HERO</p>
-    <p data-LEC=".font" data-font="subline">testing HERO and subline</p>
+    <p data-LEC=".FS" data-font="hero"   >HERO</p>
+    <p data-LEC=".FS" data-font="subline">testing HERO and subline</p>
     <p>
         plain &lt;p&gt; for testing &lt;body&gt; font-size with 'hard-coded' linear equation: <em>calc(0.625vmin + 0.75rem)</em><br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
-    <p data-LEC=".font" data-font="code">
+    <p data-LEC=".FS" data-font="code">
         testing default 'code' font-size<br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
-    <p data-LEC=".font.x2" data-font="code">
+    <p data-LEC=".FS.x2" data-font="code">
         testing 'code' font-size at scale x2<br>
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
@@ -883,57 +954,57 @@ hr                  { border: 1px solid rgba(47, 79, 79,.1); border-top: none }
         Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
         Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
     </p>
-    <p data-LEC=".font" data-font="code">
-        generic rule (all rect elements)&emsp;: <b>[data-rect*="test"]>* { --x1: 320; --y1: 75; --x2: 1920; --y2: 225 }</b><br>
-        inline rules (single rect element): <b>data-LEC=".rect.PT.ratio"</b> or <b>data-LEC=".wid.hgt.PT.ratio"</b> where '<b>.ratio</b>' is one of the predefined ratios.
+    <p data-LEC=".FS" data-font="code">
+        generic rule (all rect elements)&emsp;: <b>[data-rect*="test"]>* { --x1: 320; --y1: 75; --x2: 1920; --y2: 225; --x: 100vw }</b><br>
+        inline rules (single rect element): <b>data-LEC=".rect.PT.ratio"</b> or <b>data-LEC=".W.H.PT.ratio"</b> where '<b>.ratio</b>' is one of the predefined ratios.
     </p>
 
     <item class="rect-test">
-        <h3>ratios high:low (.rect .PT)</h3>
+        <h3>ratios high:low (.W .H .PT)</h3>
         <div data-rect="test">
-            <div data-LEC=".rect.PT.1:1  "><span></span>1:1  </div>
-            <div data-LEC=".rect.PT.2:1  "><span></span>2:1  </div>
-            <div data-LEC=".rect.PT.3:2  "><span></span>3:2  </div>
-            <div data-LEC=".rect.PT.4:3  "><span></span>4:3  </div>
-            <div data-LEC=".rect.PT.gr:1 "><span></span>1.618:1</div>
-            <div data-LEC=".rect.PT.16:9 "><span></span>16:9 </div>
-            <div data-LEC=".rect.PT.17:10"><span></span>17:10</div>
+            <div data-LEC=".W.H.PT.1:1  "><span></span>1:1    </div>
+            <div data-LEC=".W.H.PT.2:1  "><span></span>2:1    </div>
+            <div data-LEC=".W.H.PT.3:2  "><span></span>3:2    </div>
+            <div data-LEC=".W.H.PT.4:3  "><span></span>4:3    </div>
+            <div data-LEC=".W.H.PT.gr:1 "><span></span>1.618:1</div>
+            <div data-LEC=".W.H.PT.16:9 "><span></span>16:9   </div>
+            <div data-LEC=".W.H.PT.17:10"><span></span>17:10  </div>
         </div>
-        <h3>ratios low:high (.wid .hgt .PT)</h3>
+        <h3>ratios low:high (.W .H .PT)</h3>
         <div data-rect="test">
-            <div data-LEC=".wid.hgt.PT.1:1  "><span></span>1:1  </div>
-            <div data-LEC=".wid.hgt.PT.1:2  "><span></span>1:2  </div>
-            <div data-LEC=".wid.hgt.PT.2:3  "><span></span>2:3  </div>
-            <div data-LEC=".wid.hgt.PT.3:4  "><span></span>3:4  </div>
-            <div data-LEC=".wid.hgt.PT.1:gr "><span></span>1:1.618</div>
-            <div data-LEC=".wid.hgt.PT.9:16 "><span></span>9:16 </div>
-            <div data-LEC=".wid.hgt.PT.10:17"><span></span>10:17</div>
+            <div data-LEC=".W.H.PT.1:1  "><span></span>1:1    </div>
+            <div data-LEC=".W.H.PT.1:2  "><span></span>1:2    </div>
+            <div data-LEC=".W.H.PT.2:3  "><span></span>2:3    </div>
+            <div data-LEC=".W.H.PT.3:4  "><span></span>3:4    </div>
+            <div data-LEC=".W.H.PT.1:gr "><span></span>1:1.618</div>
+            <div data-LEC=".W.H.PT.9:16 "><span></span>9:16   </div>
+            <div data-LEC=".W.H.PT.10:17"><span></span>10:17  </div>
         </div>
-        <h3>ratios high:low (.rect .LS)</h3>
+        <h3>ratios high:low (.W .H .LS)</h3>
         <div data-rect="test">
-            <div data-LEC=".rect.LS.1:1  "><span></span>1:1  </div>
-            <div data-LEC=".rect.LS.2:1  "><span></span>2:1  </div>
-            <div data-LEC=".rect.LS.3:2  "><span></span>3:2  </div>
-            <div data-LEC=".rect.LS.4:3  "><span></span>4:3  </div>
-            <div data-LEC=".rect.LS.gr:1 "><span></span>1.618:1</div>
-            <div data-LEC=".rect.LS.16:9 "><span></span>16:9 </div>
-            <div data-LEC=".rect.LS.17:10"><span></span>17:10</div>
+            <div data-LEC=".W.H.LS.1:1  "><span></span>1:1    </div>
+            <div data-LEC=".W.H.LS.2:1  "><span></span>2:1    </div>
+            <div data-LEC=".W.H.LS.3:2  "><span></span>3:2    </div>
+            <div data-LEC=".W.H.LS.4:3  "><span></span>4:3    </div>
+            <div data-LEC=".W.H.LS.gr:1 "><span></span>1.618:1</div>
+            <div data-LEC=".W.H.LS.16:9 "><span></span>16:9   </div>
+            <div data-LEC=".W.H.LS.17:10"><span></span>17:10  </div>
         </div>
-        <h3>ratios low:high (.wid .hgt .LS)</h3>
+        <h3>ratios low:high (.W .H .LS)</h3>
         <div data-rect="test">
-            <div data-LEC=".wid.hgt.LS.1:1  "><span></span>1:1  </div>
-            <div data-LEC=".wid.hgt.LS.1:2  "><span></span>1:2  </div>
-            <div data-LEC=".wid.hgt.LS.2:3  "><span></span>2:3  </div>
-            <div data-LEC=".wid.hgt.LS.3:4  "><span></span>3:4  </div>
-            <div data-LEC=".wid.hgt.LS.1:gr "><span></span>1:1.618</div>
-            <div data-LEC=".wid.hgt.LS.9:16 "><span></span>9:16 </div>
-            <div data-LEC=".wid.hgt.LS.10:17"><span></span>10:17</div>
+            <div data-LEC=".W.H.LS.1:1  "><span></span>1:1    </div>
+            <div data-LEC=".W.H.LS.1:2  "><span></span>1:2    </div>
+            <div data-LEC=".W.H.LS.2:3  "><span></span>2:3    </div>
+            <div data-LEC=".W.H.LS.3:4  "><span></span>3:4    </div>
+            <div data-LEC=".W.H.LS.1:gr "><span></span>1:1.618</div>
+            <div data-LEC=".W.H.LS.9:16 "><span></span>9:16   </div>
+            <div data-LEC=".W.H.LS.10:17"><span></span>10:17  </div>
         </div>
     </item>
 </section>
 
-<section band="padded.x2.cardlist" clr="0" no-select>
-    <div class="card-outer" data-LEC=".rect.PT">
+<section band="padded.x2.cardlist" data-rect="cardlist" clr="0" no-select>
+    <div class="card-outer" data-LEC=".W.H.PT">
         <div class="card-inner">
             <p>The default card ratio is 1:1.<br><br>
                Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
@@ -941,23 +1012,23 @@ hr                  { border: 1px solid rgba(47, 79, 79,.1); border-top: none }
             </p>
         </div>
     </div>
-    <div class="card-outer" data-LEC=".rect.PT">
+    <div class="card-outer" data-LEC=".W.H.PT">
         <div class="card-inner">
-            <p>In this demo ratio it is 16:10<br><br>
+            <p>In this demo ratio it is 1.67:1<br><br>
                Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
                Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
             </p>
         </div>
     </div>
-    <div class="card-outer" data-LEC=".rect.PT">
+    <div class="card-outer" data-LEC=".W.H.PT">
         <div class="card-inner">
-            <p>(--ratio: 1.6), which is not<br><br>
+            <p>(--ratio: 1.67), which is not<br><br>
                Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
                Legendos expetendis id sed. Ex ius quem accusamus, pri et deleniti copiosae.
             </p>
         </div>
     </div>
-    <div class="card-outer" data-LEC=".rect.PT">
+    <div class="card-outer" data-LEC=".W.H.PT">
         <div class="card-inner">
             <p>one of the predefined ratios.<br><br>
                Lorem ipsum dolor sit amet, exerci dolorem est ad. Sumo rebum prompta vim ad.
