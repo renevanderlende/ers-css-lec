@@ -1,6 +1,6 @@
 {
 	"compilerOptions": {
-		"target": "ESNext",
+		"target": "ES5",
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
@@ -10,5 +10,7 @@
 		"removeComments": false,
 		"rootDir": "src",
 		"outDir": "build",
-	}
+		"module": "ES6"
+	},
+	"include": ["src/*.ts", "src/**/*.ts", "src/*.js", "src/**/*.js"]
 }

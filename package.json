@@ -5,8 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"build-ts": "tsc",
-		"build-src": "tsc --allowjs true",
-		"bundle-all": "tsc --allowjs true --outfile bundle.js --module system"
+		"build-src": "tsc --allowjs true"
 	},
 	"license": "MIT",
 	"devDependencies": {
