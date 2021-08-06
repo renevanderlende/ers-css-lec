@@ -1,0 +1,15 @@
+{
+	"name": "ers-css-lec",
+	"version": "1.0.0",
+	"description": "part of 'easy responsiveness series' ™: responsive sizes in CSS using linear equations",
+	"type": "module",
+	"scripts": {
+		"build-ts": "tsc",
+		"build-src": "tsc --allowjs true",
+		"bundle-all": "tsc --allowjs true --outfile bundle.js --module system"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"typescript": "^4.3.5"
+	}
+}
