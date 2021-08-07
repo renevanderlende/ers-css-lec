@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible"
+		content="IE=edge">
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1.0">
+	<title>Title</title>
+	<style>
+		/* a messy throw together */
+		a {
+			color: #28e;
+		}
+
+		[type="number"] {
+			width: max(6rem, 5vmax);
+		}
+
+	</style>
+</head>
+
+<body>
+
+	<div>
+		<h1>Testing The ES6 Port</h1>
+		<p>Demos and tests for the TS-ES6 port of the JS functions. <a href="/build/ers-lec.js">View the JS.</a> <a
+				href="/src/ers-lec.ts">View the TS.</a></p>
+		<p><em>Note: Please build the source code to JS for these tests to run.</em></p>
+		<h2><code>clampDec</code> function</h2>
+		<p>
+			<code>export const clampDec = (value: number, dec: number = 3): number => (dec && dec >= 0 ? +value.toFixed(dec) : value);</code>
+			<br />
+			clampDec( <label for="value">value = </label><input type="number"
+				id="value"
+				value="3.141592" />, <label for="dec">dec = </label><input type="number"
+				id="dec"
+				value="3" /> ) == <span id="clampDecResult">3.142</span>
+		</p>
+		<h2><code>forEachEntryIn</code> function</h2>
+		<p>
+			<code>
+				export const forEachEntryIn = &lt;T=any, scope=any&gt;(
+					array: T[],
+					callback: (scope: scope, index: number, value: T) => void,
+					scope: scope,
+					): void => {
+					array.forEach((value, index) => callback(scope, index, value));
+					};
+			</code>
+			<br />
+			forEachEntryIn(
+			<br />
+			&nbsp;&nbsp;<label for="array">array = </label><input type="text"
+				id="array"
+				value="[1, 2, 3]" />
+			<br />
+			&nbsp;&nbsp;<span>callback = (scope, index, value) => console.log(scope, index, value)</span>
+			<br />
+			&nbsp;&nbsp;<label for="scope">scope = </label><input type="text"
+				id="scope"
+				value="demo" />
+			<br />
+			) ==
+			<br />
+			<span id="forEachEntryInResult"></span>
+		</p>
+		<h2></h2>
+		<p></p>
+		<h2></h2>
+		<p></p>
+		<h2></h2>
+		<p></p>
+	</div>
+
+
+	<script type="module"
+		src="/build/ers-lec.js"></script>
+	<script type="module">
+		// please prefer to write page functionality in TS/JS files in src/ and import and initialize them in `index.ts`
+		import { clampDec } from '/build/ers-lec.js';
+		const clampdecVal = document.getElementById( "value" );
+		const clampdecDec = document.getElementById( "dec" );
+		const clampdecRes = document.getElementById( "clampDecResult" );
+		const gen = () => {
+			clampdecRes.innerHTML = clampDec( +clampdecVal.value, +clampdecDec.value );
+		}
+		clampdecVal.addEventListener( "input", gen );
+		clampdecDec.addEventListener( "input", gen );
+		gen();
+	</script>
+	<script type="module">
+		import { forEachEntryIn } from "/build/ers-lec.js";
+		const array = document.getElementById( 'array' );
+		const scope = document.getElementById( 'scope' );
+		let output = [];
+		const callback = ( scope, index, value ) => {
+			output.push( `${ scope }, ${ index }, ${ value }` );
+		};
+		const gen = () => {
+			output = [];
+			forEachEntryIn( JSON.parse( array.value ), callback, scope.value );
+			result.innerHTML = output.join( '<br />' );
+		}
+		const result = document.getElementById( 'forEachEntryInResult' );
+		array.addEventListener( 'input', gen );
+		scope.addEventListener( 'input', gen );
+		gen();
+	</script>
+</body>
+
+</html>
